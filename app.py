@@ -676,14 +676,12 @@ else:
             s_fg,s_bg,s_lbl = signal_style(s_sc, max_possible_score)
 
             results.append({
-                "종목명": STOCK_MAP.get(sym, sym),
-                "현재가": f"{curr2}{cp:,.2f}",
-                "현재가_raw": cp,
+                "name": STOCK_MAP.get(sym, sym),
+                "price": f"{curr2}{cp:,.2f}",
+                "price_raw": cp,
                 "long_score_raw": l_sc,
                 "short_score_raw": s_sc,
-                "📈 LONG 스코어": f"{l_sc}/{max_possible_score}",
-                "LONG 시그널": l_lbl,
-                "📉 SHORT 스코어": f"{s_sc}/{max_possible_score}",
+                "LONG_signal": l_lbl,
                 "SHORT 시그널": s_lbl,
                 "_sym": sym,
             })
@@ -701,12 +699,12 @@ else:
             return ""
 
         df_show = pd.DataFrame([{
-            "종목명":      d["종목명"],
-            "현재가":      d["현재가"],
-            "📈 LONG":     d["📈 LONG 스코어"],
-            "LONG 시그널": d["LONG 시그널"],
-            "📉 SHORT":    d["📉 SHORT 스코어"],
-            "SHORT 시그널":d["SHORT 시그널"],
+            "name":      d.get["name", "N/A"],
+            "price":      d.get["price", "N/A"],
+            "📈 LONG":     f"{d.get('long_score_raw', 0)}/{max_possible_score}",
+            "LONG 시그널": d.get("long_signal", "관망"),
+            "📉 SHORT":    f"{d.get('short_score_raw', 0)}/{max_possible_score}",
+            "SHORT 시그널":d.get("short_signal", "관망"),
         } for d in data])
 
         styled = df_show.style.map(style_sig, subset=["LONG 시그널","SHORT 시그널"])
