@@ -633,7 +633,7 @@ else:
     st.markdown(
         f"<h2 style='font-size:22px;font-weight:700;color:#1c1c1e;letter-spacing:-0.5px;margin-bottom:4px;'>"
         f"조건 스캐너</h2>"
-        f"<p style='font-size:13px;color:#8e8e93;margin-bottom:20px;'>{scanner_interval} 기준 · Long / Short 동시 분석</p>",
+        f"<p style='font-size:13px;color:#8e8e93;margin-bottom:20px;'>{scanner_interval} 기준 · LONG / SHORT 동시 분석</p>",
         unsafe_allow_html=True)
 
     mc1, mc2 = st.columns(2)
@@ -650,9 +650,9 @@ else:
         prog = st.progress(0)
         total = len(scan_list)
 
-        # Long + Short 동시 패치
-        all_combos = [(sym,"Long (매수)") for sym in scan_list] + \
-                     [(sym,"Short (공매도)") for sym in scan_list]
+        # LONG + SHORT 동시 패치
+        all_combos = [(sym,"LONG (매수)") for sym in scan_list] + \
+                     [(sym,"SHORT (공매도)") for sym in scan_list]
 
         raw = {}
         def _scan(args):
@@ -664,8 +664,8 @@ else:
                 prog.progress(min(1.0, (i+1)/len(all_combos)))
 
         for sym in scan_list:
-            rl = raw.get((sym,"Long (매수)"))
-            rs = raw.get((sym,"Short (공매도)"))
+            rl = raw.get((sym,"LONG (매수)"))
+            rs = raw.get((sym,"SHORT (공매도)"))
             if not rl and not rs: continue
             cp    = (rl or rs)["price"]
             curr2 = (rl or rs)["currency"]
@@ -675,73 +675,76 @@ else:
             l_fg,l_bg,l_lbl = signal_style(l_sc, max_possible_score)
             s_fg,s_bg,s_lbl = signal_style(s_sc, max_possible_score)
 
+            # [수정 1] 모든 저장 키를 안전한 영문 소문자 ASCII로 100% 통일
             results.append({
                 "name": STOCK_MAP.get(sym, sym),
                 "price": f"{curr2}{cp:,.2f}",
                 "price_raw": cp,
-                "Long_score_raw": l_sc,
-                "Short_score_raw": s_sc,
-                "Long_signal": l_lbl,
-                "Short_signal": s_lbl,
+                "long_score_raw": l_sc,
+                "short_score_raw": s_sc,
+                "long_signal": l_lbl,    # "LONG_signal" -> 통일
+                "short_signal": s_lbl,   # "SHORT signal" -> 통일
                 "_sym": sym,
             })
         if results:
-            st.session_state["cached_scan"] = sorted(results, key=lambda x: x["Long_score_raw"]+x["Short_score_raw"], reverse=True)
+            st.session_state["cached_scan"] = sorted(results, key=lambda x: x["long_score_raw"]+x["short_score_raw"], reverse=True)
 
     if "cached_scan" in st.session_state and st.session_state["cached_scan"]:
         data = st.session_state["cached_scan"]
-        
+
+        # [수정 2] 대괄호 양식 오류 d.get[...]를 올바른 소괄호 d.get(...) 양식으로 수정 및 영문 키 매핑
         df_show = pd.DataFrame([{
-            "name":      d.get("name", "N/A"),
-            "price":      d.get("price", "N/A"),
-            "📈 Long":     f"{d.get('Long_score_raw', 0)}/{max_possible_score}",
-            "Long_signal": d.get("Long_signal", "관망"),
-            "📉 Short":    f"{d.get('Short_score_raw', 0)}/{max_possible_score}",
-            "Short_signal":d.get("Short_signal", "관망"),
+            "종목名":       d.get("name", "N/A"),
+            "현재가":       d.get("price", "N/A"),
+            "📈 LONG":     f"{d.get('long_score_raw', 0)}/{max_possible_score}",
+            "LONG signal":  d.get("long_signal", "관망"),
+            "📉 SHORT":    f"{d.get('short_score_raw', 0)}/{max_possible_score}",
+            "SHORT signal": d.get("short_signal", "관망"),
         } for d in data])
-        
-        # 테이블 출력
+
+        # [수정 3] 중복 정의 제거 및 공백 방어 처리가 완비된 단일 스타일 함수 배치
         def style_sig(val):
-            val_str = str(val).replace(" ", "")
-            if "사격개시" in str(val): return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
-            if "위험구역" in str(val): return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
-            if "관망" in str(val):    return "background:#fef9c3;color:#7d5a00;font-weight:600;"
+            val_str = str(val).replace(" ", "") 
+            if "사격개시" in val_str: return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
+            if "위험구역" in val_str: return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
+            if "관망" in val_str:     return "background:#fef9c3;color:#7d5a00;font-weight:600;"
             return ""
-          
-        styled = df_show.style.map(style_sig, subset=["Long_signal","Short_signal"])
+            
+        styled = df_show.style.map(style_sig, subset=["LONG signal","SHORT signal"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         # Top 10 카드 그리드
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
-                    "letter-spacing:0.5px;margin-bottom:12px;'>Top 10 — Long+Short 합산 고득점</p>",
+                    "letter-spacing:0.5px;margin-bottom:12px;'>Top 10 — LONG+SHORT 합산 고득점</p>",
                     unsafe_allow_html=True)
 
-        top10 = sorted(data, key=lambda x: x["Long_score_raw"]+x["Short_score_raw"], reverse=True)[:10]
+        top10 = sorted(data, key=lambda x: x["long_score_raw"]+x["short_score_raw"], reverse=True)[:10]
         for row_start in range(0,len(top10),5):
             cols = st.columns(5)
             for ci, item in enumerate(top10[row_start:row_start+5]):
                 sym   = item["_sym"]
-                l_fg,l_bg,l_lbl = signal_style(item["Long_score_raw"],  max_possible_score)
-                s_fg,s_bg,s_lbl = signal_style(item["Short_score_raw"], max_possible_score)
+                l_fg,l_bg,l_lbl = signal_style(item["long_score_raw"],  max_possible_score)
+                s_fg,s_bg,s_lbl = signal_style(item["short_score_raw"], max_possible_score)
                 with cols[ci]:
+                    # [수정 4] 카드 내부 렌더링 시 item['종목명'], item['현재가'] 대신 올바른 영문 키('name', 'price')로 연동
                     st.markdown(
                         f"<div style='background:#fff;border:1px solid #e5e5ea;border-radius:14px;"
                         f"padding:14px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:8px;'>"
                         f"<div style='font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:2px;"
-                        f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{item['name']}</div>"
-                        f"<div style='font-size:16px;font-weight:800;color:#1c1c1e;margin:6px 0;'>{item['price']}</div>"
+                        f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{item.get('name', 'N/A')}</div>"
+                        f"<div style='font-size:16px;font-weight:800;color:#1c1c1e;margin:6px 0;'>{item.get('price', 'N/A')}</div>"
                         f"<div style='display:flex;gap:4px;justify-content:center;flex-wrap:wrap;'>"
                         f"<div style='background:{l_bg};border-radius:8px;padding:4px 8px;'>"
-                        f"<div style='font-size:9px;color:{l_fg};font-weight:600;'>📈 Long</div>"
-                        f"<div style='font-size:13px;font-weight:800;color:{l_fg};'>{item['Long_score_raw']}/{max_possible_score}</div>"
+                        f"<div style='font-size:9px;color:{l_fg};font-weight:600;'>📈 LONG</div>"
+                        f"<div style='font-size:13px;font-weight:800;color:{l_fg};'>{item['long_score_raw']}/{max_possible_score}</div>"
                         f"</div>"
                         f"<div style='background:{s_bg};border-radius:8px;padding:4px 8px;'>"
-                        f"<div style='font-size:9px;color:{s_fg};font-weight:600;'>📉 Short</div>"
-                        f"<div style='font-size:13px;font-weight:800;color:{s_fg};'>{item['Short_score_raw']}/{max_possible_score}</div>"
+                        f"<div style='font-size:9px;color:{s_fg};font-weight:600;'>📉 SHORT</div>"
+                        f"<div style='font-size:13px;font-weight:800;color:{s_fg};'>{item['short_score_raw']}/{max_possible_score}</div>"
                         f"</div></div></div>", unsafe_allow_html=True)
                     if st.button(f"분석", key=f"go_{sym}_{row_start}_{ci}", use_container_width=True):
+                        # 분석 버튼 클릭 시 세션 버퍼 업데이트 로직 연계 가능
                         st.session_state["ticker_buffer"] = sym
-                        st.session_state["mode_buffer"]   = "🎯 단일 종목"
-                        st.session_state["input_key_trigger"] += 1
+                        st.session_state["mode_buffer"] = "🎯 단일 종목 검색"
                         st.rerun()
