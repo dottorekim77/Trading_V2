@@ -170,7 +170,7 @@ def save_permanently():
               open("saved_strategies.json","w",encoding="utf-8"),
               ensure_ascii=False, indent=4)
 
-_D = {"ticker_buffer":"IONQ","mode_buffer":"🎯 단일 종목 검색",
+_D = {"ticker_buffer":"IONQ","mode_buffer":"🎯 단일 종목",
       "position_buffer":"Long (매수)","selected_entry_price":0.0,
       "target_tp_pct":5.0,"target_sl_pct":2.0,"input_key_trigger":0,
       "cur_Short_ma":20,"cur_mid_ma":50,"cur_Long_ma":200,"cur_vol_break":2.5,
@@ -309,7 +309,7 @@ active_conditions = list(st.session_state["cur_conds"])
 COND_LABELS_Long = [
     "① [오닐/존스] 시장 지수 > MA20 (상승장)",
     "② [미너비니] 주가 > MA50 > MA150 > MA200",
-    "③ [미너비니] 52주 저가+25% & 고가-25% 이내",
+    "③ [미너비니] 주가 ≥ 52주 고가 - 25% 이내",
     "④ [미너비니/오닐] 최근 변동폭 축소 (힘의 응축)",
     "⑤ [다바스/덴니스] 20일 최고가 상향 돌파",
     "⑥ [다바스/오닐] 거래량 ≥ 평균 × 2.5배",
@@ -321,7 +321,7 @@ COND_LABELS_Long = [
 COND_LABELS_Short = [
     "① [오닐/존스] 시장 지수 < MA20 (하락장)",
     "② [미너비니] 주가 < MA50 < MA150 < MA200",
-    "③ [미너비니] 52주 고가-25% & 저가+25% 이내",
+    "③ [미너비니] 주가 ≤ 52주 저가 + 25% 이내",
     "④ [미너비니/오닐] 최근 변동폭 축소 후 하락",
     "⑤ [다바스/덴니스] 20일 최저가 하향 이탈",
     "⑥ [다바스/오닐] 거래량 ≥ 평균 × 2.5배",
@@ -426,14 +426,14 @@ def analyse(symbol, interval, forced_position=None):
 
         if "Long" in _pos:
             cr = [bool(il>im), bool(cp>m50v>m150v>m200v),
-                  bool(cp>=low_52*1.25 and cp>=high_52*0.75),
+                  bool(cp>=high_52*0.75),
                   bool(rec_rng<pri_rng), bool(cp>brk_hi),
                   bool(vo.iloc[-1]>=vol_avg20*2.5),
                   bool(adx_v>=20 and pdi_v>mdi_v),
                   bool(atr_v>0), bool(rr_ok), bool(cp>m20v)]
         else:
             cr = [bool(il<im), bool(cp<m50v<m150v<m200v),
-                  bool(cp<=high_52*0.75 and cp<=low_52*1.25),
+                  bool(cp<=low_52*1.25),
                   bool(rec_rng<pri_rng), bool(cp<brk_lo),
                   bool(vo.iloc[-1]>=vol_avg20*2.5),
                   bool(adx_v>=20 and mdi_v>pdi_v),
@@ -533,26 +533,34 @@ if "단일" in app_mode:
     st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
                 "letter-spacing:0.5px;margin-bottom:8px;'>실시간 모니터링</p>", unsafe_allow_html=True)
 
-    if current_entry > 0:
+    # 가독성 확보 및 에러 방지를 위한 계산 단계 타입 캐스팅 및 문자열 처리강화
+    try:
+        cp_val = float(cp) if cp is not None else 0.0
+    except:
+        cp_val = 0.0
+
+    if current_entry > 0 and cp_val > 0:
         if "Long" in position_side:
-            profit = ((cp-current_entry)/current_entry)*100
-            ctp = current_entry*(1+target_tp_pct/100)
-            csl = current_entry*(1-target_sl_pct/100)
+            profit = ((cp_val - current_entry) / current_entry) * 100
+            ctp = current_entry * (1 + target_tp_pct / 100)
+            csl = current_entry * (1 - target_sl_pct / 100)
         else:
-            profit = ((current_entry-cp)/current_entry)*100
-            ctp = current_entry*(1-target_tp_pct/100)
-            csl = current_entry*(1+target_sl_pct/100)
+            profit = ((current_entry - cp_val) / current_entry) * 100
+            ctp = current_entry * (1 - target_tp_pct / 100)
+            csl = current_entry * (1 + target_sl_pct / 100)
+        profit_str = f"{profit:+.2f}%"
+        ctp_str = f"{curr}{ctp:,.2f}"
+        csl_str = f"{curr}{csl:,.2f}"
     else:
-        profit=ctp=csl=0.0
+        profit_str = "—"
+        ctp_str = "—"
+        csl_str = "—"
 
-    pfg = "#1c6b3a" if profit>=0 else "#9b1c1c"
-    pbg = "#d1f5e0" if profit>=0 else "#fde8e8"
-
-    m1,m2,m3,m4 = st.columns(4)
-    m1.metric("🔥 price",  f"{curr}{cp:,.2f}")
-    m2.metric("📊 수익률",  f"{profit:+.2f}%" if current_entry>0 else "—")
-    m3.metric(f"🎯 익절 {target_tp_pct}%", f"{curr}{ctp:,.2f}" if current_entry>0 else "—")
-    m4.metric(f"🚨 손절 {target_sl_pct}%", f"{curr}{csl:,.2f}" if current_entry>0 else "—")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("🔥 price", f"{curr}{cp_val:,.2f}")
+    m2.metric("📊 수익률", profit_str)
+    m3.metric(f"🎯 익절 {target_tp_pct}%", ctp_str)
+    m4.metric(f"🚨 손절 {target_sl_pct}%", csl_str)
 
     # ── 체크리스트 ──────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
@@ -609,7 +617,7 @@ if "단일" in app_mode:
         # ATR 요약
         atr_v, sl_v, tp_v = ref.get("atr",0), ref.get("sl",0), ref.get("tp",0)
         if atr_v and atr_v>0:
-            rr = abs(tp_v-cp)/(abs(cp-sl_v)+1e-9)
+            rr = abs(tp_v-cp_val)/(abs(cp_val-sl_v)+1e-9)
             st.markdown(
                 f"<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;'>"
                 f"<div style='background:#f2f2f7;border:1px solid #e5e5ea;border-radius:10px;"
@@ -675,15 +683,14 @@ else:
             l_fg,l_bg,l_lbl = signal_style(l_sc, max_possible_score)
             s_fg,s_bg,s_lbl = signal_style(s_sc, max_possible_score)
 
-            # [수정 1] 모든 저장 키를 안전한 영문 소문자 ASCII로 100% 통일
             results.append({
                 "name": STOCK_MAP.get(sym, sym),
                 "price": f"{curr2}{cp:,.2f}",
                 "price_raw": cp,
                 "long_score_raw": l_sc,
                 "short_score_raw": s_sc,
-                "long_signal": l_lbl,    # "LONG_signal" -> 통일
-                "short_signal": s_lbl,   # "SHORT signal" -> 통일
+                "long_signal": l_lbl,    
+                "short_signal": s_lbl,   
                 "_sym": sym,
             })
         if results:
@@ -692,7 +699,6 @@ else:
     if "cached_scan" in st.session_state and st.session_state["cached_scan"]:
         data = st.session_state["cached_scan"]
 
-        # [수정 2] 대괄호 양식 오류 d.get[...]를 올바른 소괄호 d.get(...) 양식으로 수정 및 영문 키 매핑
         df_show = pd.DataFrame([{
             "종목名":       d.get("name", "N/A"),
             "현재가":       d.get("price", "N/A"),
@@ -702,7 +708,6 @@ else:
             "SHORT signal": d.get("short_signal", "관망"),
         } for d in data])
 
-        # [수정 3] 중복 정의 제거 및 공백 방어 처리가 완비된 단일 스타일 함수 배치
         def style_sig(val):
             val_str = str(val).replace(" ", "") 
             if "사격개시" in val_str: return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
@@ -727,7 +732,6 @@ else:
                 l_fg,l_bg,l_lbl = signal_style(item["long_score_raw"],  max_possible_score)
                 s_fg,s_bg,s_lbl = signal_style(item["short_score_raw"], max_possible_score)
                 with cols[ci]:
-                    # [수정 4] 카드 내부 렌더링 시 item['종목명'], item['현재가'] 대신 올바른 영문 키('name', 'price')로 연동
                     st.markdown(
                         f"<div style='background:#fff;border:1px solid #e5e5ea;border-radius:14px;"
                         f"padding:14px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:8px;'>"
@@ -744,7 +748,6 @@ else:
                         f"<div style='font-size:13px;font-weight:800;color:{s_fg};'>{item['short_score_raw']}/{max_possible_score}</div>"
                         f"</div></div></div>", unsafe_allow_html=True)
                     if st.button(f"분석", key=f"go_{sym}_{row_start}_{ci}", use_container_width=True):
-                        # 분석 버튼 클릭 시 세션 버퍼 업데이트 로직 연계 가능
                         st.session_state["ticker_buffer"] = sym
-                        st.session_state["mode_buffer"] = "🎯 단일 종목 검색"
+                        st.session_state["mode_buffer"] = "🎯 단일 종목"
                         st.rerun()
