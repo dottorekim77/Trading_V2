@@ -712,7 +712,7 @@ else:
             if "사격개시" in val_str: return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
             if "위험구역" in val_str: return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
             if "관망" in val_str:     return "background:#fef9c3;color:#7d5a00;font-weight:600;"
-            return "
+            return ""
             
         styled = df_show.style.map(style_sig, subset=["LONG signal","SHORT signal"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
