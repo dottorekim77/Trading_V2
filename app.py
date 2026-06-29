@@ -7,16 +7,16 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 # ==========================================
-# 1. 페이지 설정 및 글로벌 CSS (Apple / macOS 스타일)
+# 1. 페이지 설정 및 글로벌 CSS (기존 애플 UI 유지)
 # ==========================================
-st.set_page_config(page_title="추세추종 대가들의 마스터 대시보드", layout="wide", page_icon="📈")
+st.set_page_config(page_title="한/미 통합 주식 실시간 마스터 대시보드", layout="wide", page_icon="📈")
 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* 전체 앱 기본 폰트 및 배경 설정 (SF Pro 스타일) */
-html, body, [class*="css"] {
+html, body, [class*=\"css\"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif !important;
 }
 
@@ -24,33 +24,33 @@ html, body, [class*="css"] {
 .stApp { background-color: #f5f5f7; }
 
 /* 사이드바 다크 모드 (macOS Pro 앱 스타일) */
-section[data-testid="stSidebar"] {
+section[data-testid=\"stSidebar\"] {
     background: #1c1c1e !important;
     border-right: none !important;
 }
-section[data-testid="stSidebar"] * { color: #f5f5f7 !important; }
-section[data-testid="stSidebar"] .stTextInput input,
-section[data-testid="stSidebar"] .stNumberInput input,
-section[data-testid="stSidebar"] .stSelectbox select {
+section[data-testid=\"stSidebar\"] * { color: #f5f5f7 !important; }
+section[data-testid=\"stSidebar\"] .stTextInput input,
+section[data-testid=\"stSidebar\"] .stNumberInput input,
+section[data-testid=\"stSidebar\"] .stSelectbox select {
     background: #2c2c2e !important;
     border: 1px solid #3a3a3c !important;
     border-radius: 10px !important;
     color: #f5f5f7 !important;
 }
-section[data-testid="stSidebar"] .stRadio label { color: #ebebf5 !important; }
-section[data-testid="stSidebar"] .stExpander {
+section[data-testid=\"stSidebar\"] .stRadio label { color: #ebebf5 !important; }
+section[data-testid=\"stSidebar\"] .stExpander {
     background: #2c2c2e !important;
     border: 1px solid #3a3a3c !important;
     border-radius: 12px !important;
 }
-section[data-testid="stSidebar"] button {
+section[data-testid=\"stSidebar\"] button {
     background: #2c2c2e !important;
     border: 1px solid #3a3a3c !important;
     border-radius: 10px !important;
     color: #f5f5f7 !important;
     font-size: 12px !important;
 }
-section[data-testid="stSidebar"] button:hover {
+section[data-testid=\"stSidebar\"] button:hover {
     background: #3a3a3c !important;
     border-color: #0a84ff !important;
 }
@@ -62,19 +62,19 @@ section[data-testid="stSidebar"] button:hover {
 #MainMenu, footer, header { visibility: hidden; }
 
 /* 메인 대시보드 Metric 컴포넌트 */
-div[data-testid="metric-container"] {
+div[data-testid=\"metric-container\"] {
     background: #ffffff;
     border: 1px solid #e5e5ea;
     border-radius: 14px;
     padding: 14px 18px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-div[data-testid="metric-container"] label { color: #8e8e93 !important; font-size: 11px !important; font-weight: 500 !important; }
-div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 18px !important; font-weight: 700 !important; color: #1c1c1e !important; }
+div[data-testid=\"metric-container\"] label { color: #8e8e93 !important; font-size: 11px !important; font-weight: 500 !important; }
+div[data-testid=\"metric-container\"] div[data-testid=\"stMetricValue\"] { font-size: 18px !important; font-weight: 700 !important; color: #1c1c1e !important; }
 
 /* 프로그레스 바 정밀 바인딩 */
-div[data-testid="stProgress"] > div { border-radius: 99px !important; height: 6px !important; }
-div[data-testid="stProgress"] > div > div { border-radius: 99px !important; background: #0a84ff !important; }
+div[data-testid=\"stProgress\"] > div { border-radius: 99px !important; height: 6px !important; }
+div[data-testid=\"stProgress\"] > div > div { border-radius: 99px !important; background: #0a84ff !important; }
 
 /* 메인 UI 인터랙티브 버튼 디자인 */
 .stButton > button {
@@ -94,7 +94,7 @@ div[data-testid="stProgress"] > div > div { border-radius: 99px !important; back
 }
 
 /* 데이터프레임 라운딩 처리 및 보더라인 제거 */
-div[data-testid="stDataFrame"] { border-radius: 14px !important; overflow: hidden; border: 1px solid #e5e5ea !important; }
+div[data-testid=\"stDataFrame\"] { border-radius: 14px !important; overflow: hidden; border: 1px solid #e5e5ea !important; }
 
 /* 메인 영역 확장 컴포넌트 */
 details { border-radius: 12px !important; border: 1px solid #e5e5ea !important; background: #fff !important; }
@@ -105,7 +105,7 @@ hr { border: none !important; border-top: 1px solid #e5e5ea !important; margin: 
 </style>
 """, unsafe_allow_html=True)
 
-# ── 애플 스타일 카드 컨텐츠 컴포넌트 헬퍼 ────────────────
+# ── 카드 헬퍼 작명 고정 ───────────────────────────────────────────────
 def create_apple_html_card(content_html, bg="#ffffff", border="#e5e5ea", radius=14, padding="14px 18px"):
     return (f"<div style='background:{bg}; border:1px solid {border}; border-radius:{radius}px; "
             f"padding:{padding}; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:8px;'>"
@@ -185,7 +185,7 @@ if strat_keys and st.session_state.active_strategy_name in st.session_state["sav
 kt = st.session_state["input_key_trigger"]
 
 # ==========================================
-# 4. 마스터 제어 콘솔 (사이드바 - 애플 다크뷰)
+# 4. 마스터 제어 콘솔 (기존 사이드바 레이아웃 유지)
 # ==========================================
 st.sidebar.markdown("<div style='padding:16px 4px 8px 4px;'>"
                     "<span style='font-size:16px; font-weight:700; color:#f5f5f7; letter-spacing:-0.3px;'>📉 TrendMaster Pro</span>"
@@ -212,8 +212,7 @@ else:
 st.sidebar.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
 st.sidebar.markdown("<span style='font-size:11px; font-weight:600; color:#8e8e93; text-transform:uppercase;'>내 포지션 전략</span>", unsafe_allow_html=True)
 
-# 추세추종 특성상 LONG 기준 최적화 유지를 권장하나 컴포넌트 유지
-position_side = "LONG (매수)"
+position_side = "LONG (매수)" # 대가들의 추세추종 특성상 매수에 자동 바인딩 고정
 
 current_entry = st.sidebar.number_input("내 실제 진입 평단가", value=float(st.session_state["selected_entry_price"]), step=0.01, key=f"e_input_{kt}")
 st.session_state["selected_entry_price"] = current_entry
@@ -257,7 +256,7 @@ if strat_keys:
 else:
     st.sidebar.caption("저장된 전략이 없습니다.")
 
-# ── 새로운 10가지 조건식 라벨 구성 ──────────────────────────────────────────
+# ── 요청하신 새로운 10가지 조건식 정의 ───────────────────────────────────────
 COND_LABELS = [
     "① 시장/지수 필터링 (Index > 20EMA)",
     "② 장기 정배열 (Price > 50 > 150 > 200 EMA)",
@@ -300,17 +299,15 @@ if st.sidebar.button("💾  전략 저장 / 수정", use_container_width=True, k
     st.rerun()
 
 # ==========================================
-# 5. 수학/기술적 분석 엔진 (대가들의 10대 조건식 적용)
+# 5. 기술적 분석 엔진 (새로운 10가지 알고리즘 반영)
 # ==========================================
 def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
     if not symbol: return None
     symbol = symbol.upper().strip()
-    
-    # 지표 산출을 위한 충분한 역사적 데이터 확보
     period_str = "3y" if interval in ["1d", "1wk"] else "730d"
 
     try:
-        # 시장 지수 매핑 필터링 결정용 지수 확보
+        # [조건 1] 시장 지수 자동 필터링 결정 (^GSPC / ^KS11 / ^KQ11)
         if ".KS" in symbol: index_symbol = "^KS11"
         elif ".KQ" in symbol: index_symbol = "^KQ11"
         else: index_symbol = "^GSPC"
@@ -326,23 +323,19 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
         if df.empty or len(df) < 252: return None
         df = df.sort_index(ascending=True).ffill().bfill()
 
-        # 기술적 지표 계산 
+        # 기술적 지표 생성
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['EMA150'] = df['Close'].ewm(span=150, adjust=False).mean()
         df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-        df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
         
-        # 52주 최고/최저가
+        # 52주 데이터 및 20일 저항선 추출
         df['Min_52wk'] = df['Low'].rolling(window=252, min_periods=50).min()
         df['Max_52wk'] = df['High'].rolling(window=252, min_periods=50).max()
-        
-        # 최근 최고가 저항선 변수 (20일 최고가)
         df['Max_20v'] = df['High'].shift(1).rolling(window=20).max()
-        
-        # 거래량 평활
         df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
         
-        # ADX / DMI 수치 연산
+        # ADX / DMI 계산
         delta_high = df['High'].diff()
         delta_low = df['Low'].diff()
         plus_dm = np.where((delta_high > delta_low) & (delta_high > 0), delta_high, 0.0)
@@ -357,28 +350,28 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
 
         last, prev = df.iloc[-1], df.iloc[-2]
         
-        # 4번 조건: 최근 15거래일 변동폭 vs 그 전 30거래일(한 달간) 변동폭 비교
+        # [조건 4] 변동성 축소 패턴 (VCP) 계산
         recent_range = df['High'].tail(15).max() - df['Low'].tail(15).min()
         prior_range = df['High'].iloc[-45:-15].max() - df['Low'].iloc[-45:-15].min()
         vcp_pattern = bool(recent_range < prior_range)
 
-        # 9번 조건: 기대수익비 산출
-        resistance_price = last['Max_52wk'] # 직전 주요 고가 저항선 대용
+        # [조건 9] 기대 수익비 산출
+        resistance_price = last['Max_52wk']
         stop_loss_price = last['Close'] - (2 * last['ATR'])
         reward_side = resistance_price - last['Close']
         risk_side = last['Close'] - stop_loss_price
         profit_ratio_cond = bool(reward_side >= (risk_side * 2))
 
-        # 10가지 조건 탐지식 바인딩
+        # 10대 대가들의 조건 판정 매핑
         c_results = [
             market_filter,                                                                  # 1
             bool(last['Close'] > last['EMA50'] > last['EMA150'] > last['EMA200']),         # 2
-            bool(last['Close'] >= last['Min_52wk'] * 125 and last['Close'] >= last['Max_52wk'] * 0.75), # 3
+            bool(last['Close'] >= last['Min_52wk'] * 1.25 and last['Close'] >= last['Max_52wk'] * 0.75), # 3
             vcp_pattern,                                                                    # 4
             bool(last['Close'] >= last['Max_20v']),                                         # 5
             bool(last['Volume'] >= last['Vol_MA20'] * 2.5),                                 # 6
             bool(last['ADX'] >= 20 and last['Plus_DI'] > last['Minus_DI']),                 # 7
-            bool(risk_side > 0),                                                            # 8 (구조상 항상 충족)
+            bool(risk_side > 0),                                                            # 8
             profit_ratio_cond,                                                              # 9
             bool(last['Close'] > last['EMA20'])                                             # 10
         ]
@@ -391,7 +384,7 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
     except Exception: return None
 
 # ==========================================
-# 6. 메인 뷰 — 단일 종목 검색 모드
+# 6. 메인 뷰 — 단일 종목 검색 모드 (기존 컴포넌트 구조 유지)
 # ==========================================
 if app_mode == "🎯 단일 종목 검색":
     name_disp = STOCK_MAP.get(ticker, ticker)
@@ -403,7 +396,6 @@ if app_mode == "🎯 단일 종목 검색":
         st.info("← 왼쪽 제어 패널에서 분석할 종목 이름 또는 티커를 입력해 주세요.")
         st.stop()
 
-    INTERVALS = ["1d"]
     with st.spinner("⏳ 대가들의 알고리즘 기반 분석 연산 실행 중..."):
         res = get_yahoo_custom_analysis(ticker, "1d")
 
@@ -413,7 +405,7 @@ if app_mode == "🎯 단일 종목 검색":
 
     c_price, curr = res["current_price"], res["currency"]
 
-    # 실시간 자산 관리 상태 모니터링
+    # 기존 모니터링 컴포넌트 레이아웃 100% 보존
     st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;'>실시간 시스템 산출 모니터링</p>", unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("🔥 현재가", f"{curr}{c_price:,.2f}")
@@ -431,7 +423,7 @@ if app_mode == "🎯 단일 종목 검색":
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # 종합 스코어바 및 타점 체크리스트 구현
+    # 기존 상단 스코어바 및 타점 매칭 프로그레스 바 보존
     st.markdown(f"<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;'>대가들의 조건식 체크리스트 검증 결과</p>", unsafe_allow_html=True)
     sc1, sc2 = st.columns([1, 3])
     with sc1:
@@ -445,7 +437,7 @@ if app_mode == "🎯 단일 종목 검색":
             pct = int(res["score"] / max_possible_score * 100)
             st.markdown(f"<div style='background:#fff; border:1px solid #e5e5ea; border-radius:14px; padding:14px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.04);'>"
                         f"<div style='font-size:11px;color:#8e8e93;font-weight:500;margin-bottom:8px;'>추세 조건 매칭률</div>"
-                        f"<div style='background:#f2f2f7; border-radius:99px; height:8px; overflow:hidden;'>"
+                        f"<div style='background:#f2f2f7; border-radius:99px; height:8px; overflow:hiddentoggle;'>"
                         f"<div style='background:{res['fg']}; width:{pct}%; height:8px; border-radius:99px; transition:width 0.5s ease;'></div></div>"
                         f"<div style='font-size:20px; font-weight:700; color:{res['fg']}; margin-top:8px;'>{pct}%</div></div>", unsafe_allow_html=True)
 
@@ -459,7 +451,7 @@ if app_mode == "🎯 단일 종목 검색":
         else: col.markdown(create_apple_html_card(f"⬜ <span style='font-size:12px;color:#c7c7cc;'>{label}</span>", bg="#fafafa", border="#e5e5ea"), unsafe_allow_html=True)
 
 # ==========================================
-# 7. 메인 뷰 — 주요 종목 마스터 스캐너 모드
+# 7. 메인 뷰 — 주요 종목 마스터 스캐너 모드 (기존 그리드뷰 유지)
 # ==========================================
 else:
     st.markdown(f"<h2 style='font-size:22px;font-weight:700;color:#1c1c1e;margin-bottom:4px;'>추세 마스터 스캐너</h2>"
@@ -509,7 +501,6 @@ else:
         styled_df = df_view.style.map(color_signal_cell, subset=['추세 부합 상태'])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-        # 하단 카드 리스트 Top 10 레이아웃
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;'>실시간 스캔 매칭률 Top 10 순위군</p>", unsafe_allow_html=True)
         
