@@ -682,7 +682,7 @@ else:
                 "long_score_raw": l_sc,
                 "short_score_raw": s_sc,
                 "LONG_signal": l_lbl,
-                "SHORT 시그널": s_lbl,
+                "SHORT signal": s_lbl,
                 "_sym": sym,
             })
         if results:
@@ -702,12 +702,19 @@ else:
             "name":      d.get["name", "N/A"],
             "price":      d.get["price", "N/A"],
             "📈 LONG":     f"{d.get('long_score_raw', 0)}/{max_possible_score}",
-            "LONG 시그널": d.get("long_signal", "관망"),
+            "LONG signal": d.get("long_signal", "관망"),
             "📉 SHORT":    f"{d.get('short_score_raw', 0)}/{max_possible_score}",
-            "SHORT 시그널":d.get("short_signal", "관망"),
+            "SHORT signal":d.get("short_signal", "관망"),
         } for d in data])
 
-        styled = df_show.style.map(style_sig, subset=["LONG 시그널","SHORT 시그널"])
+        def style_sig(val):
+            val_str = str(val).replace(" ", "") # 공백을 강제로 제거하여 "사격 개시", "사격개시" 둘 다 잡음
+            if "사격개시" in val_str: return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
+            if "위험구역" in val_str: return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
+            if "관망" in val_str:     return "background:#fef9c3;color:#7d5a00;font-weight:600;"
+            return "
+            
+        styled = df_show.style.map(style_sig, subset=["LONG signal","SHORT signal"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         # Top 10 카드 그리드
