@@ -171,9 +171,9 @@ def save_permanently():
               ensure_ascii=False, indent=4)
 
 _D = {"ticker_buffer":"IONQ","mode_buffer":"🎯 단일 종목 검색",
-      "position_buffer":"LONG (매수)","selected_entry_price":0.0,
+      "position_buffer":"Long (매수)","selected_entry_price":0.0,
       "target_tp_pct":5.0,"target_sl_pct":2.0,"input_key_trigger":0,
-      "cur_short_ma":20,"cur_mid_ma":50,"cur_long_ma":200,"cur_vol_break":2.5,
+      "cur_Short_ma":20,"cur_mid_ma":50,"cur_Long_ma":200,"cur_vol_break":2.5,
       "cur_conds":[True]*10}
 for k,v in _D.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -185,8 +185,8 @@ if "active_strategy_name" not in st.session_state or \
 
 if strat_keys and st.session_state.active_strategy_name in st.session_state["saved_strategies"]:
     sd = st.session_state["saved_strategies"][st.session_state.active_strategy_name]
-    for _k,_f,_d in [("cur_short_ma","short_ma",20),("cur_mid_ma","mid_ma",50),
-                      ("cur_long_ma","long_ma",200),("cur_vol_break","vol_breakout",2.5)]:
+    for _k,_f,_d in [("cur_Short_ma","Short_ma",20),("cur_mid_ma","mid_ma",50),
+                      ("cur_Long_ma","Long_ma",200),("cur_vol_break","vol_breakout",2.5)]:
         st.session_state[_k] = (int if _k!="cur_vol_break" else float)(sd.get(_f,_d))
     st.session_state["cur_conds"]      = sd.get("active_conds",[True]*10)
     st.session_state["target_tp_pct"]  = float(sd.get("target_tp_pct",5.0))
@@ -215,7 +215,7 @@ st.session_state["mode_buffer"] = app_mode
 sb.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
 
 # 티커 입력
-raw_in = sb.text_input("종목명 / 티커", value=st.session_state["ticker_buffer"],
+raw_in = sb.text_input("name / 티커", value=st.session_state["ticker_buffer"],
                         placeholder="예: IONQ, Tesla, 삼성전자", key=f"t_{kt}").strip()
 st.session_state["ticker_buffer"] = raw_in
 ticker = INV_STOCK_MAP.get(raw_in.lower(), raw_in.upper()) if raw_in else ""
@@ -229,7 +229,7 @@ else:
 sb.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
 sb.markdown("<span style='font-size:11px; font-weight:600; color:#8e8e93; text-transform:uppercase; letter-spacing:0.5px;'>포지션 설정</span>", unsafe_allow_html=True)
 
-pos_options = ["LONG (매수)", "SHORT (공매도)"]
+pos_options = ["Long (매수)", "Short (공매도)"]
 try: pos_idx = pos_options.index(st.session_state["position_buffer"])
 except: pos_idx = 0
 position_side = sb.radio("방향", pos_options, index=pos_idx, key=f"p_{kt}")
@@ -249,8 +249,8 @@ st.session_state["target_sl_pct"] = target_sl_pct
 
 curr_sign = "₩" if (".KS" in ticker or ".KQ" in ticker) else "$"
 if current_entry > 0:
-    side_tp = current_entry*(1+(target_tp_pct/100)) if "LONG" in position_side else current_entry*(1-(target_tp_pct/100))
-    side_sl = current_entry*(1-(target_sl_pct/100)) if "LONG" in position_side else current_entry*(1+(target_sl_pct/100))
+    side_tp = current_entry*(1+(target_tp_pct/100)) if "Long" in position_side else current_entry*(1-(target_tp_pct/100))
+    side_sl = current_entry*(1-(target_sl_pct/100)) if "Long" in position_side else current_entry*(1+(target_sl_pct/100))
     sb.markdown(
         f"<div style='display:flex;gap:6px;margin-top:4px;'>"
         f"<div style='flex:1;background:#1a3a2a;border:1px solid #1c6b3a;border-radius:10px;padding:8px 10px;text-align:center;'>"
@@ -274,12 +274,12 @@ if strat_keys:
             if st.button(lbl, key=f"load_{si}", use_container_width=True):
                 st.session_state["active_strategy_name"] = key
                 tsd = st.session_state["saved_strategies"][key]
-                for _k,_f,_d in [("cur_short_ma","short_ma",20),("cur_mid_ma","mid_ma",50),
-                                   ("cur_long_ma","long_ma",200),("cur_vol_break","vol_breakout",2.5)]:
+                for _k,_f,_d in [("cur_Short_ma","Short_ma",20),("cur_mid_ma","mid_ma",50),
+                                   ("cur_Long_ma","Long_ma",200),("cur_vol_break","vol_breakout",2.5)]:
                     st.session_state[_k] = (int if _k!="cur_vol_break" else float)(tsd.get(_f,_d))
                 st.session_state["cur_conds"]     = tsd.get("active_conds",[True]*10)
                 st.session_state["ticker_buffer"] = tsd.get("ticker","IONQ")
-                st.session_state["position_buffer"] = tsd.get("position_side","LONG (매수)")
+                st.session_state["position_buffer"] = tsd.get("position_side","Long (매수)")
                 st.session_state["selected_entry_price"] = float(tsd.get("entry_price",0.0))
                 st.session_state["target_tp_pct"] = float(tsd.get("target_tp_pct",5.0))
                 st.session_state["target_sl_pct"] = float(tsd.get("target_sl_pct",2.0))
@@ -300,13 +300,13 @@ else:
 sb.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
 dk = f"{st.session_state.active_strategy_name}_{kt}"
 
-short_ma  = st.session_state["cur_short_ma"]
+Short_ma  = st.session_state["cur_Short_ma"]
 mid_ma    = st.session_state["cur_mid_ma"]
-long_ma   = st.session_state["cur_long_ma"]
+Long_ma   = st.session_state["cur_Long_ma"]
 vol_break = st.session_state["cur_vol_break"]
 active_conditions = list(st.session_state["cur_conds"])
 
-COND_LABELS_LONG = [
+COND_LABELS_Long = [
     "① [오닐/존스] 시장 지수 > MA20 (상승장)",
     "② [미너비니] 주가 > MA50 > MA150 > MA200",
     "③ [미너비니] 52주 저가+25% & 고가-25% 이내",
@@ -318,7 +318,7 @@ COND_LABELS_LONG = [
     "⑨ [미너비니/소로스] 수익비 ≥ 2:1",
     "⑩ [세이코타] 종가 > MA20 (추세 유지)",
 ]
-COND_LABELS_SHORT = [
+COND_LABELS_Short = [
     "① [오닐/존스] 시장 지수 < MA20 (하락장)",
     "② [미너비니] 주가 < MA50 < MA150 < MA200",
     "③ [미너비니] 52주 고가-25% & 저가+25% 이내",
@@ -330,12 +330,12 @@ COND_LABELS_SHORT = [
     "⑨ [미너비니/소로스] 수익비 ≥ 2:1",
     "⑩ [세이코타] 종가 < MA20 (추세 유지)",
 ]
-COND_LABELS = COND_LABELS_LONG if "LONG" in position_side else COND_LABELS_SHORT
+COND_LABELS = COND_LABELS_Long if "Long" in position_side else COND_LABELS_Short
 
 with sb.expander(f"⚙️ 조건 설정 — {st.session_state.active_strategy_name}", expanded=False):
-    short_ma  = st.number_input("단기 MA", value=st.session_state["cur_short_ma"], key=f"sma_{dk}")
+    Short_ma  = st.number_input("단기 MA", value=st.session_state["cur_Short_ma"], key=f"sma_{dk}")
     mid_ma    = st.number_input("중기 MA", value=st.session_state["cur_mid_ma"],   key=f"mma_{dk}")
-    long_ma   = st.number_input("장기 MA", value=st.session_state["cur_long_ma"],  key=f"lma_{dk}")
+    Long_ma   = st.number_input("장기 MA", value=st.session_state["cur_Long_ma"],  key=f"lma_{dk}")
     vol_break = st.number_input("거래량 배수", value=st.session_state["cur_vol_break"], step=0.1, key=f"vbk_{dk}")
     st.markdown("---")
     active_conditions = []
@@ -356,12 +356,12 @@ if sb.button("💾  저장 / 수정", use_container_width=True, key=f"save_{dk}"
     st.session_state["saved_strategies"][sk] = {
         "ticker": st.session_state["ticker_buffer"], "position_side": position_side,
         "entry_price": current_entry, "target_tp_pct": target_tp_pct, "target_sl_pct": target_sl_pct,
-        "short_ma": short_ma, "mid_ma": mid_ma, "long_ma": long_ma, "vol_breakout": vol_break,
+        "Short_ma": Short_ma, "mid_ma": mid_ma, "Long_ma": Long_ma, "vol_breakout": vol_break,
         "active_conds": active_conditions
     }
     save_permanently()
     st.session_state.active_strategy_name = sk
-    for _k,_v in [("cur_short_ma",short_ma),("cur_mid_ma",mid_ma),("cur_long_ma",long_ma),
+    for _k,_v in [("cur_Short_ma",Short_ma),("cur_mid_ma",mid_ma),("cur_Long_ma",Long_ma),
                    ("cur_vol_break",vol_break),("cur_conds",active_conditions),
                    ("target_tp_pct",target_tp_pct),("target_sl_pct",target_sl_pct)]:
         st.session_state[_k] = _v
@@ -420,11 +420,11 @@ def analyse(symbol, interval, forced_position=None):
         cp    = cl.iloc[-1]
         m20v  = ma20.iloc[-1]; m50v = ma50.iloc[-1]
         m150v = ma150.iloc[-1]; m200v = ma200.iloc[-1]
-        sl_p  = (cp-2*atr_v) if "LONG" in _pos else (cp+2*atr_v)
-        tp_p  = (brk_hi+3*atr_v) if "LONG" in _pos else (brk_lo-3*atr_v)
+        sl_p  = (cp-2*atr_v) if "Long" in _pos else (cp+2*atr_v)
+        tp_p  = (brk_hi+3*atr_v) if "Long" in _pos else (brk_lo-3*atr_v)
         rr_ok = abs(tp_p-cp) >= 2*abs(cp-sl_p)
 
-        if "LONG" in _pos:
+        if "Long" in _pos:
             cr = [bool(il>im), bool(cp>m50v>m150v>m200v),
                   bool(cp>=low_52*1.25 and cp>=high_52*0.75),
                   bool(rec_rng<pri_rng), bool(cp>brk_hi),
@@ -471,7 +471,7 @@ if "단일" in app_mode:
         st.stop()
 
     # 8개 조합 병렬 로드
-    combos = [(iv, pos) for iv in INTERVALS for pos in ["LONG (매수)","SHORT (공매도)"]]
+    combos = [(iv, pos) for iv in INTERVALS for pos in ["Long (매수)","Short (공매도)"]]
     with st.spinner(""):
         mtf = {}
         def _fetch(args):
@@ -480,7 +480,7 @@ if "단일" in app_mode:
         with ThreadPoolExecutor(max_workers=8) as ex:
             for k2, r in ex.map(_fetch, combos): mtf[k2] = r
 
-    res_ref = mtf.get(("1d","LONG (매수)")) or mtf.get(("1d","SHORT (공매도)"))
+    res_ref = mtf.get(("1d","Long (매수)")) or mtf.get(("1d","Short (공매도)"))
     if not res_ref:
         st.error("데이터를 가져올 수 없습니다. 티커를 확인하거나 잠시 후 다시 시도하세요.")
         st.stop()
@@ -490,22 +490,22 @@ if "단일" in app_mode:
 
     # ── 시간대별 점수 테이블 ────────────────────────────────────────────
     st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
-                "letter-spacing:0.5px;margin-bottom:8px;'>시간대별 LONG / SHORT 스코어</p>",
+                "letter-spacing:0.5px;margin-bottom:8px;'>시간대별 Long / Short 스코어</p>",
                 unsafe_allow_html=True)
 
     # 헤더
     hc0, hc1, hc2 = st.columns([1,5,5])
     hc1.markdown("<div style='background:#e8f0fe;border-radius:8px;padding:5px 12px;text-align:center;"
-                 "font-size:12px;font-weight:600;color:#1a56db;'>📈 LONG (매수)</div>",
+                 "font-size:12px;font-weight:600;color:#1a56db;'>📈 Long (매수)</div>",
                  unsafe_allow_html=True)
     hc2.markdown("<div style='background:#fde8e8;border-radius:8px;padding:5px 12px;text-align:center;"
-                 "font-size:12px;font-weight:600;color:#9b1c1c;'>📉 SHORT (공매도)</div>",
+                 "font-size:12px;font-weight:600;color:#9b1c1c;'>📉 Short (공매도)</div>",
                  unsafe_allow_html=True)
 
     for iv in INTERVALS:
         rc0, rc1, rc2 = st.columns([1,5,5])
-        rl = mtf.get((iv,"LONG (매수)"))
-        rs = mtf.get((iv,"SHORT (공매도)"))
+        rl = mtf.get((iv,"Long (매수)"))
+        rs = mtf.get((iv,"Short (공매도)"))
 
         rc0.markdown(
             f"<div style='display:flex;align-items:center;justify-content:center;min-height:38px;'>"
@@ -516,7 +516,7 @@ if "단일" in app_mode:
         for col, res, side_c in [(rc1,rl,"#1a56db"),(rc2,rs,"#9b1c1c")]:
             if res:
                 fg,bg,lbl = signal_style(res["score"], max_possible_score)
-                side_lbl = "📈 LONG" if col==rc1 else "📉 SHORT"
+                side_lbl = "📈 Long" if col==rc1 else "📉 Short"
                 col.markdown(
                     f"<div style='background:{bg};border:1px solid {fg}30;border-radius:10px;"
                     f"padding:7px 14px;display:flex;align-items:center;gap:10px;'>"
@@ -534,7 +534,7 @@ if "단일" in app_mode:
                 "letter-spacing:0.5px;margin-bottom:8px;'>실시간 모니터링</p>", unsafe_allow_html=True)
 
     if current_entry > 0:
-        if "LONG" in position_side:
+        if "Long" in position_side:
             profit = ((cp-current_entry)/current_entry)*100
             ctp = current_entry*(1+target_tp_pct/100)
             csl = current_entry*(1-target_sl_pct/100)
@@ -549,7 +549,7 @@ if "단일" in app_mode:
     pbg = "#d1f5e0" if profit>=0 else "#fde8e8"
 
     m1,m2,m3,m4 = st.columns(4)
-    m1.metric("🔥 현재가",  f"{curr}{cp:,.2f}")
+    m1.metric("🔥 price",  f"{curr}{cp:,.2f}")
     m2.metric("📊 수익률",  f"{profit:+.2f}%" if current_entry>0 else "—")
     m3.metric(f"🎯 익절 {target_tp_pct}%", f"{curr}{ctp:,.2f}" if current_entry>0 else "—")
     m4.metric(f"🚨 손절 {target_sl_pct}%", f"{curr}{csl:,.2f}" if current_entry>0 else "—")
@@ -633,7 +633,7 @@ else:
     st.markdown(
         f"<h2 style='font-size:22px;font-weight:700;color:#1c1c1e;letter-spacing:-0.5px;margin-bottom:4px;'>"
         f"조건 스캐너</h2>"
-        f"<p style='font-size:13px;color:#8e8e93;margin-bottom:20px;'>{scanner_interval} 기준 · LONG / SHORT 동시 분석</p>",
+        f"<p style='font-size:13px;color:#8e8e93;margin-bottom:20px;'>{scanner_interval} 기준 · Long / Short 동시 분석</p>",
         unsafe_allow_html=True)
 
     mc1, mc2 = st.columns(2)
@@ -650,9 +650,9 @@ else:
         prog = st.progress(0)
         total = len(scan_list)
 
-        # LONG + SHORT 동시 패치
-        all_combos = [(sym,"LONG (매수)") for sym in scan_list] + \
-                     [(sym,"SHORT (공매도)") for sym in scan_list]
+        # Long + Short 동시 패치
+        all_combos = [(sym,"Long (매수)") for sym in scan_list] + \
+                     [(sym,"Short (공매도)") for sym in scan_list]
 
         raw = {}
         def _scan(args):
@@ -664,8 +664,8 @@ else:
                 prog.progress(min(1.0, (i+1)/len(all_combos)))
 
         for sym in scan_list:
-            rl = raw.get((sym,"LONG (매수)"))
-            rs = raw.get((sym,"SHORT (공매도)"))
+            rl = raw.get((sym,"Long (매수)"))
+            rs = raw.get((sym,"Short (공매도)"))
             if not rl and not rs: continue
             cp    = (rl or rs)["price"]
             curr2 = (rl or rs)["currency"]
@@ -679,72 +679,66 @@ else:
                 "name": STOCK_MAP.get(sym, sym),
                 "price": f"{curr2}{cp:,.2f}",
                 "price_raw": cp,
-                "long_score_raw": l_sc,
-                "short_score_raw": s_sc,
-                "LONG_signal": l_lbl,
-                "SHORT signal": s_lbl,
+                "Long_score_raw": l_sc,
+                "Short_score_raw": s_sc,
+                "Long_signal": l_lbl,
+                "Short_signal": s_lbl,
                 "_sym": sym,
             })
         if results:
-            st.session_state["cached_scan"] = sorted(results, key=lambda x: x["long_score_raw"]+x["short_score_raw"], reverse=True)
+            st.session_state["cached_scan"] = sorted(results, key=lambda x: x["Long_score_raw"]+x["Short_score_raw"], reverse=True)
 
     if "cached_scan" in st.session_state and st.session_state["cached_scan"]:
         data = st.session_state["cached_scan"]
-
+        
+        df_show = pd.DataFrame([{
+            "name":      d.get("name", "N/A"),
+            "price":      d.get("price", "N/A"),
+            "📈 Long":     f"{d.get('Long_score_raw', 0)}/{max_possible_score}",
+            "Long_signal": d.get("Long_signal", "관망"),
+            "📉 Short":    f"{d.get('Short_score_raw', 0)}/{max_possible_score}",
+            "Short_signal":d.get("Short_signal", "관망"),
+        } for d in data])
+        
         # 테이블 출력
         def style_sig(val):
+            val_str = str(val).replace(" ", "")
             if "사격개시" in str(val): return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
             if "위험구역" in str(val): return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
             if "관망" in str(val):    return "background:#fef9c3;color:#7d5a00;font-weight:600;"
             return ""
-
-        df_show = pd.DataFrame([{
-            "name":      d.get["name", "N/A"],
-            "price":      d.get["price", "N/A"],
-            "📈 LONG":     f"{d.get('long_score_raw', 0)}/{max_possible_score}",
-            "LONG signal": d.get("long_signal", "관망"),
-            "📉 SHORT":    f"{d.get('short_score_raw', 0)}/{max_possible_score}",
-            "SHORT signal":d.get("short_signal", "관망"),
-        } for d in data])
-
-        def style_sig(val):
-            val_str = str(val).replace(" ", "") # 공백을 강제로 제거하여 "사격 개시", "사격개시" 둘 다 잡음
-            if "사격개시" in val_str: return "background:#d1f5e0;color:#1c6b3a;font-weight:600;"
-            if "위험구역" in val_str: return "background:#fde8e8;color:#9b1c1c;font-weight:600;"
-            if "관망" in val_str:     return "background:#fef9c3;color:#7d5a00;font-weight:600;"
-            return ""
-            
-        styled = df_show.style.map(style_sig, subset=["LONG signal","SHORT signal"])
+          
+        styled = df_show.style.map(style_sig, subset=["Long_signal","Short_signal"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         # Top 10 카드 그리드
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
-                    "letter-spacing:0.5px;margin-bottom:12px;'>Top 10 — LONG+SHORT 합산 고득점</p>",
+                    "letter-spacing:0.5px;margin-bottom:12px;'>Top 10 — Long+Short 합산 고득점</p>",
                     unsafe_allow_html=True)
 
-        top10 = sorted(data, key=lambda x: x["long_score_raw"]+x["short_score_raw"], reverse=True)[:10]
+        top10 = sorted(data, key=lambda x: x["Long_score_raw"]+x["Short_score_raw"], reverse=True)[:10]
         for row_start in range(0,len(top10),5):
             cols = st.columns(5)
             for ci, item in enumerate(top10[row_start:row_start+5]):
                 sym   = item["_sym"]
-                l_fg,l_bg,l_lbl = signal_style(item["long_score_raw"],  max_possible_score)
-                s_fg,s_bg,s_lbl = signal_style(item["short_score_raw"], max_possible_score)
+                l_fg,l_bg,l_lbl = signal_style(item["Long_score_raw"],  max_possible_score)
+                s_fg,s_bg,s_lbl = signal_style(item["Short_score_raw"], max_possible_score)
                 with cols[ci]:
                     st.markdown(
                         f"<div style='background:#fff;border:1px solid #e5e5ea;border-radius:14px;"
                         f"padding:14px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:8px;'>"
                         f"<div style='font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:2px;"
-                        f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{item['종목명']}</div>"
-                        f"<div style='font-size:16px;font-weight:800;color:#1c1c1e;margin:6px 0;'>{item['현재가']}</div>"
+                        f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{item['name']}</div>"
+                        f"<div style='font-size:16px;font-weight:800;color:#1c1c1e;margin:6px 0;'>{item['price']}</div>"
                         f"<div style='display:flex;gap:4px;justify-content:center;flex-wrap:wrap;'>"
                         f"<div style='background:{l_bg};border-radius:8px;padding:4px 8px;'>"
-                        f"<div style='font-size:9px;color:{l_fg};font-weight:600;'>📈 LONG</div>"
-                        f"<div style='font-size:13px;font-weight:800;color:{l_fg};'>{item['long_score_raw']}/{max_possible_score}</div>"
+                        f"<div style='font-size:9px;color:{l_fg};font-weight:600;'>📈 Long</div>"
+                        f"<div style='font-size:13px;font-weight:800;color:{l_fg};'>{item['Long_score_raw']}/{max_possible_score}</div>"
                         f"</div>"
                         f"<div style='background:{s_bg};border-radius:8px;padding:4px 8px;'>"
-                        f"<div style='font-size:9px;color:{s_fg};font-weight:600;'>📉 SHORT</div>"
-                        f"<div style='font-size:13px;font-weight:800;color:{s_fg};'>{item['short_score_raw']}/{max_possible_score}</div>"
+                        f"<div style='font-size:9px;color:{s_fg};font-weight:600;'>📉 Short</div>"
+                        f"<div style='font-size:13px;font-weight:800;color:{s_fg};'>{item['Short_score_raw']}/{max_possible_score}</div>"
                         f"</div></div></div>", unsafe_allow_html=True)
                     if st.button(f"분석", key=f"go_{sym}_{row_start}_{ci}", use_container_width=True):
                         st.session_state["ticker_buffer"] = sym
