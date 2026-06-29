@@ -170,7 +170,7 @@ def save_permanently():
               open("saved_strategies.json","w",encoding="utf-8"),
               ensure_ascii=False, indent=4)
 
-_D = {"ticker_buffer":"IONQ","mode_buffer":"🎯 단일 종목 검색",
+_D = {"ticker_buffer":"IONQ","mode_buffer":"🎯 단일 종목",
       "position_buffer":"Long (매수)","selected_entry_price":0.0,
       "target_tp_pct":5.0,"target_sl_pct":2.0,"input_key_trigger":0,
       "cur_Short_ma":20,"cur_mid_ma":50,"cur_Long_ma":200,"cur_vol_break":2.5,
@@ -439,18 +439,17 @@ def analyse(symbol, interval, forced_position=None):
                   bool(adx_v>=20 and mdi_v>pdi_v),
                   bool(atr_v>0), bool(rr_ok), bool(cp<m20v)]
 
-        # [수정] 스캐너로 forced_position 연산 시 사이드바 필터에 영향받지 않도록 분기처리 보완
         if forced_position is not None:
             current_filters = [True] * 10
-            max_score = 10
+            max_sc = 10
         else:
             current_filters = active_conditions
-            max_score = max_possible_score
+            max_sc = max_possible_score
 
         score = sum(1 for i,a in enumerate(current_filters) if a and cr[i])
-        fg,bg,lbl = signal_style(score, max_score)
-        if max_score>0:
-            status = f"{lbl} ({score}/{max_score})"
+        fg,bg,lbl = signal_style(score, max_sc)
+        if max_sc>0:
+            status = f"{lbl} ({score}/{max_sc})"
         else:
             status = "— 조건 없음"
 
@@ -463,7 +462,6 @@ def analyse(symbol, interval, forced_position=None):
 # 6. 메인 — 단일 종목
 # ==========================================
 if "단일" in app_mode:
-    # 페이지 타이틀
     name_disp = STOCK_MAP.get(ticker, ticker)
     st.markdown(
         f"<div style='margin-bottom:20px;'>"
@@ -478,7 +476,6 @@ if "단일" in app_mode:
         st.info("← 왼쪽 사이드바에서 종목 티커를 입력하세요 (예: IONQ, TSLA, 삼성전자)")
         st.stop()
 
-    # 8개 조합 병렬 로드
     combos = [(iv, pos) for iv in INTERVALS for pos in ["Long (매수)","Short (공매도)"]]
     with st.spinner(""):
         mtf = {}
@@ -496,12 +493,10 @@ if "단일" in app_mode:
     cp   = res_ref["price"]
     curr = res_ref["currency"]
 
-    # ── 시간대별 점수 테이블 ────────────────────────────────────────────
     st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
                 "letter-spacing:0.5px;margin-bottom:8px;'>시간대별 Long / Short 스코어</p>",
                 unsafe_allow_html=True)
 
-    # 헤더
     hc0, hc1, hc2 = st.columns([1,5,5])
     hc1.markdown("<div style='background:#e8f0fe;border-radius:8px;padding:5px 12px;text-align:center;"
                  "font-size:12px;font-weight:600;color:#1a56db;'>📈 Long (매수)</div>",
@@ -536,7 +531,6 @@ if "단일" in app_mode:
                 col.markdown("<div style='color:#c7c7cc;font-size:12px;padding:7px 14px;'>데이터 없음</div>",
                              unsafe_allow_html=True)
 
-    # ── 모니터링 카드 ───────────────────────────────────────────────────
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
     st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
                 "letter-spacing:0.5px;margin-bottom:8px;'>실시간 모니터링</p>", unsafe_allow_html=True)
@@ -553,16 +547,12 @@ if "단일" in app_mode:
     else:
         profit=ctp=csl=0.0
 
-    pfg = "#1c6b3a" if profit>=0 else "#9b1c1c"
-    pbg = "#d1f5e0" if profit>=0 else "#fde8e8"
-
     m1,m2,m3,m4 = st.columns(4)
     m1.metric("🔥 price",  f"{curr}{cp:,.2f}")
     m2.metric("📊 수익률",  f"{profit:+.2f}%" if current_entry>0 else "—")
     m3.metric(f"🎯 익절 {target_tp_pct}%", f"{curr}{ctp:,.2f}" if current_entry>0 else "—")
     m4.metric(f"🚨 손절 {target_sl_pct}%", f"{curr}{csl:,.2f}" if current_entry>0 else "—")
 
-    # ── 체크리스트 ──────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
     ref = mtf.get(("1d", position_side)) or res_ref
     if ref:
@@ -614,7 +604,6 @@ if "단일" in app_mode:
                     f"<span style='font-size:12px;color:#c7c7cc;'>{label}</span>",
                     bg="#fafafa", border="#e5e5ea"), unsafe_allow_html=True)
 
-        # ATR 요약
         atr_v, sl_v, tp_v = ref.get("atr",0), ref.get("sl",0), ref.get("tp",0)
         if atr_v and atr_v>0:
             rr = abs(tp_v-cp)/(abs(cp-sl_v)+1e-9)
@@ -658,7 +647,6 @@ else:
         prog = st.progress(0)
         total = len(scan_list)
 
-        # [수정] 대소문자 검사 규격 일치를 위해 문자열을 "Long (매수)" 및 "Short (공매도)"로 정정 및 통일
         all_combos = [(sym,"Long (매수)") for sym in scan_list] + \
                      [(sym,"Short (공매도)") for sym in scan_list]
 
@@ -680,8 +668,6 @@ else:
 
             l_sc = rl["score"] if rl else 0
             s_sc = rs["score"] if rs else 0
-            
-            # 스캐너 전체 조사는 항상 10가지 조건을 모수로 사용하므로 max_score=10 전달
             l_fg,l_bg,l_lbl = signal_style(l_sc, 10)
             s_fg,s_bg,s_lbl = signal_style(s_sc, 10)
 
@@ -691,8 +677,8 @@ else:
                 "price_raw": cp,
                 "long_score_raw": l_sc,
                 "short_score_raw": s_sc,
-                "long_signal": l_lbl,   
-                "short_signal": s_lbl,  
+                "long_signal": l_lbl,
+                "short_signal": s_lbl,
                 "_sym": sym,
             })
         if results:
@@ -701,7 +687,6 @@ else:
     if "cached_scan" in st.session_state and st.session_state["cached_scan"]:
         data = st.session_state["cached_scan"]
 
-        # 스캐너 전체 표기는 조건 모수를 10으로 고정하여 렌더링
         df_show = pd.DataFrame([{
             "종목名":       d.get("name", "N/A"),
             "현재가":       d.get("price", "N/A"),
@@ -721,7 +706,6 @@ else:
         styled = df_show.style.map(style_sig, subset=["LONG signal","SHORT signal"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
-        # Top 10 카드 그리드
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;"
                     "letter-spacing:0.5px;margin-bottom:12px;'>Top 10 — LONG+SHORT 합산 고득점</p>",
@@ -754,4 +738,3 @@ else:
                         st.session_state["ticker_buffer"] = sym
                         st.session_state["mode_buffer"] = "🎯 단일 종목"
                         st.rerun()
-}
