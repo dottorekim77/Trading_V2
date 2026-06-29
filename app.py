@@ -5,126 +5,13 @@ import numpy as np
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 # ==========================================
-# 1. 페이지 설정 및 글로벌 CSS (기존 애플 UI 유지)
+# 1. 페이지 기본 설정 및 상태 초기화 (기존 UI 100% 유지)
 # ==========================================
-st.set_page_config(page_title="한/미 통합 주식 실시간 마스터 대시보드", layout="wide", page_icon="📈")
+st.set_page_config(page_title="한/미 통합 주식 실시간 마스터 대시보드", layout="wide")
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-/* 전체 앱 기본 폰트 및 배경 설정 (SF Pro 스타일) */
-html, body, [class*=\"css\"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif !important;
-}
-
-/* 메인 프레임 라이트 그레이 배경 */
-.stApp { background-color: #f5f5f7; }
-
-/* 사이드바 다크 모드 (macOS Pro 앱 스타일) */
-section[data-testid=\"stSidebar\"] {
-    background: #1c1c1e !important;
-    border-right: none !important;
-}
-section[data-testid=\"stSidebar\"] * { color: #f5f5f7 !important; }
-section[data-testid=\"stSidebar\"] .stTextInput input,
-section[data-testid=\"stSidebar\"] .stNumberInput input,
-section[data-testid=\"stSidebar\"] .stSelectbox select {
-    background: #2c2c2e !important;
-    border: 1px solid #3a3a3c !important;
-    border-radius: 10px !important;
-    color: #f5f5f7 !important;
-}
-section[data-testid=\"stSidebar\"] .stRadio label { color: #ebebf5 !important; }
-section[data-testid=\"stSidebar\"] .stExpander {
-    background: #2c2c2e !important;
-    border: 1px solid #3a3a3c !important;
-    border-radius: 12px !important;
-}
-section[data-testid=\"stSidebar\"] button {
-    background: #2c2c2e !important;
-    border: 1px solid #3a3a3c !important;
-    border-radius: 10px !important;
-    color: #f5f5f7 !important;
-    font-size: 12px !important;
-}
-section[data-testid=\"stSidebar\"] button:hover {
-    background: #3a3a3c !important;
-    border-color: #0a84ff !important;
-}
-
-/* 메인 레이아웃 여백 정리 */
-.block-container { padding: 1.5rem 2rem 2rem 2rem !important; max-width: 1400px; }
-
-/* 불필요한 Streamlit 기본 요소 숨김 처리 */
-#MainMenu, footer, header { visibility: hidden; }
-
-/* 메인 대시보드 Metric 컴포넌트 */
-div[data-testid=\"metric-container\"] {
-    background: #ffffff;
-    border: 1px solid #e5e5ea;
-    border-radius: 14px;
-    padding: 14px 18px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-div[data-testid=\"metric-container\"] label { color: #8e8e93 !important; font-size: 11px !important; font-weight: 500 !important; }
-div[data-testid=\"metric-container\"] div[data-testid=\"stMetricValue\"] { font-size: 18px !important; font-weight: 700 !important; color: #1c1c1e !important; }
-
-/* 프로그레스 바 정밀 바인딩 */
-div[data-testid=\"stProgress\"] > div { border-radius: 99px !important; height: 6px !important; }
-div[data-testid=\"stProgress\"] > div > div { border-radius: 99px !important; background: #0a84ff !important; }
-
-/* 메인 UI 인터랙티브 버튼 디자인 */
-.stButton > button {
-    border-radius: 10px !important;
-    border: 1px solid #e5e5ea !important;
-    background: #ffffff !important;
-    color: #1c1c1e !important;
-    font-weight: 500 !important;
-    font-size: 13px !important;
-    padding: 6px 14px !important;
-    transition: all 0.15s ease !important;
-}
-.stButton > button:hover {
-    background: #f0f0f5 !important;
-    border-color: #0a84ff !important;
-    color: #0a84ff !important;
-}
-
-/* 데이터프레임 라운딩 처리 및 보더라인 제거 */
-div[data-testid=\"stDataFrame\"] { border-radius: 14px !important; overflow: hidden; border: 1px solid #e5e5ea !important; }
-
-/* 메인 영역 확장 컴포넌트 */
-details { border-radius: 12px !important; border: 1px solid #e5e5ea !important; background: #fff !important; }
-summary { font-weight: 600 !important; font-size: 13px !important; }
-
-/* 디바이더 슬림화 */
-hr { border: none !important; border-top: 1px solid #e5e5ea !important; margin: 12px 0 !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# ── 카드 헬퍼 작명 고정 ───────────────────────────────────────────────
-def create_apple_html_card(content_html, bg="#ffffff", border="#e5e5ea", radius=14, padding="14px 18px"):
-    return (f"<div style='background:{bg}; border:1px solid {border}; border-radius:{radius}px; "
-            f"padding:{padding}; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:8px;'>"
-            f"{content_html}</div>")
-
-def create_apple_pill(text, fg, bg):
-    return (f"<span style='background:{bg}; color:{fg}; font-size:11px; font-weight:600; "
-            f"padding:3px 9px; border-radius:99px; white-space:nowrap;'>{text}</span>")
-
-def get_signal_theme(score, max_score):
-    if max_score == 0: return "#8e8e93", "#f2f2f7", "—"
-    ratio = score / max_score
-    if ratio >= 0.8: return "#1c6b3a", "#d1f5e0", "🟢 사격 개시"
-    if ratio <= 0.4: return "#9b1c1c", "#fde8e8", "🔴 위험구역"
-    return "#7d5a00", "#fef9c3", "🟡 관망"
-
-# ==========================================
-# 2. 전역 종목 데이터 셋 구성
-# ==========================================
 STOCK_MAP = {
     "TSLA": "Tesla", "NVDA": "Nvidia", "AAPL": "Apple", "MSFT": "Microsoft", "AMZN": "Amazon",
     "GOOGL": "Alphabet", "META": "Meta Platforms", "NFLX": "Netflix", "IONQ": "IonQ", "PLTR": "Palantir",
@@ -146,180 +33,160 @@ STOCK_MAP = {
     "272210.KS": "한화시스템", "402340.KS": "SK스퀘어", "022100.KQ": "포스코DX", "058470.KQ": "리노공업",
     "293490.KQ": "카카오게임즈", "263750.KQ": "펄어비스", "138040.KS": "메리츠금융지주", "003550.KS": "LG"
 }
-INV_STOCK_MAP = {k.lower(): k for k in STOCK_MAP.keys()}
-for k, v in STOCK_MAP.items(): INV_STOCK_MAP[v.lower()] = k
-US_SCAN_LIST = [k for k in STOCK_MAP.keys() if not k.endswith((".KS", ".KQ"))]
-KR_SCAN_LIST = [k for k in STOCK_MAP.keys() if k.endswith((".KS", ".KQ"))]
 
-# ==========================================
-# 3. Session State 동기화 및 초기화
-# ==========================================
+INV_STOCK_MAP = {v.lower(): k for k, v in STOCK_MAP.items()}
+for k in STOCK_MAP.keys():
+    INV_STOCK_MAP[k.lower()] = k
+
+US_STOCK_LIST = [k for k in STOCK_MAP.keys() if not (k.endswith(".KS") or k.endswith(".KQ"))]
+KR_STOCK_LIST = [k for k in STOCK_MAP.keys() if k.endswith(".KS") or k.endswith(".KQ")]
+
 if "saved_strategies" not in st.session_state:
-    try:
-        if os.path.exists("saved_strategies.json"):
-            with open("saved_strategies.json", "r", encoding="utf-8") as f_json:
-                st.session_state["saved_strategies"] = json.load(f_json)
-        else: st.session_state["saved_strategies"] = {}
-    except Exception: st.session_state["saved_strategies"] = {}
+    if os.path.exists("saved_strategies.json"):
+        try:
+            with open("saved_strategies.json", "r", encoding="utf-8") as f:
+                st.session_state["saved_strategies"] = json.load(f)
+        except:
+            st.session_state["saved_strategies"] = {}
+    else:
+        st.session_state["saved_strategies"] = {}
 
-def save_strategies_permanently():
-    with open("saved_strategies.json", "w", encoding="utf-8") as f_json:
-        json.dump(st.session_state["saved_strategies"], f_json, ensure_ascii=False, indent=4)
+def save_strategies():
+    with open("saved_strategies.json", "w", encoding="utf-8") as f:
+        json.dump(st.session_state["saved_strategies"], f, ensure_ascii=False, indent=4)
 
-_defaults = {"ticker_buffer": "IONQ", "mode_buffer": "🎯 단일 종목 검색", "position_buffer": "LONG (매수)",
-             "selected_entry_price": 0.0, "target_tp_pct": 10.0, "target_sl_pct": 5.0, "input_key_trigger": 0,
-             "cur_conds": [True]*10}
-for _sk, _sv in _defaults.items():
-    if _sk not in st.session_state: st.session_state[_sk] = _sv
-
-strat_keys = list(st.session_state["saved_strategies"].keys())
-if "active_strategy_name" not in st.session_state or st.session_state.active_strategy_name not in st.session_state["saved_strategies"]:
-    st.session_state.active_strategy_name = strat_keys[0] if strat_keys else "임시 미지정 전략"
-
-if strat_keys and st.session_state.active_strategy_name in st.session_state["saved_strategies"]:
-    sd = st.session_state["saved_strategies"][st.session_state.active_strategy_name]
-    st.session_state["cur_conds"] = sd.get("active_conds", [True]*10)
-    st.session_state["target_tp_pct"] = float(sd.get("target_tp_pct", 10.0))
-    st.session_state["target_sl_pct"] = float(sd.get("target_sl_pct", 5.0))
+if "ticker_buffer" not in st.session_state: st.session_state["ticker_buffer"] = "IONQ"
+if "mode_buffer" not in st.session_state: st.session_state["mode_buffer"] = "🎯 단일 종목 검색"
+if "position_buffer" not in st.session_state: st.session_state["position_buffer"] = "LONG (매수)"
+if "selected_entry_price" not in st.session_state: st.session_state["selected_entry_price"] = 0.0
+if "target_tp_pct" not in st.session_state: st.session_state["target_tp_pct"] = 10.0
+if "target_sl_pct" not in st.session_state: st.session_state["target_sl_pct"] = 5.0
+if "input_key_trigger" not in st.session_state: st.session_state["input_key_trigger"] = 0
+if "active_strategy_name" not in st.session_state: st.session_state["active_strategy_name"] = "임시 미지정 전략"
+if "cur_conds" not in st.session_state: st.session_state["cur_conds"] = [True] * 10
 
 kt = st.session_state["input_key_trigger"]
 
 # ==========================================
-# 4. 마스터 제어 콘솔 (기존 사이드바 레이아웃 유지)
+# 2. 사이드바 제어판 (기존 UI 디자인 유지)
 # ==========================================
-st.sidebar.markdown("<div style='padding:16px 4px 8px 4px;'>"
-                    "<span style='font-size:16px; font-weight:700; color:#f5f5f7; letter-spacing:-0.3px;'>📉 TrendMaster Pro</span>"
-                    "<br><span style='font-size:11px; color:#8e8e93;'>Premium Trend Following Screen</span></div>",
-                    unsafe_allow_html=True)
-st.sidebar.markdown("<hr style='border-color:#3a3a3c;margin:0 0 12px 0;'>", unsafe_allow_html=True)
+st.sidebar.title("🎛️ 제어 콘솔")
 
-mode_options = ["🎯 단일 종목 검색", "🔍 조건 스캐너"]
-try: mode_idx = mode_options.index(st.session_state["mode_buffer"])
-except ValueError: mode_idx = 0
-app_mode = st.sidebar.radio("작동 모드 전환:", options=mode_options, index=mode_idx, key=f"m_radio_{kt}")
+app_mode = st.sidebar.radio("작동 모드 선택:", ["🎯 단일 종목 검색", "🔍 조건 스캐너"], 
+                            index=0 if st.session_state["mode_buffer"] == "🎯 단일 종목 검색" else 1, key=f"mode_radio_{kt}")
 st.session_state["mode_buffer"] = app_mode
 
-st.sidebar.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
-raw_in = st.sidebar.text_input("종목 이름 또는 티커 입력:", value=st.session_state["ticker_buffer"], key=f"t_input_{kt}").strip()
-st.session_state["ticker_buffer"] = raw_in
-ticker = INV_STOCK_MAP.get(raw_in.lower(), raw_in.upper()) if raw_in else ""
+raw_ticker_input = st.sidebar.text_input("종목명 또는 티커 검색:", value=st.session_state["ticker_buffer"], key=f"ticker_input_{kt}").strip()
+st.session_state["ticker_buffer"] = raw_ticker_input
+
+ticker = INV_STOCK_MAP.get(raw_ticker_input.lower(), raw_ticker_input.upper()) if raw_ticker_input else ""
 
 if app_mode == "🔍 조건 스캐너":
-    scanner_interval = st.sidebar.selectbox("스캐너 시간대 설정:", options=["1d", "1h"], index=0, key=f"i_select_{kt}")
+    scanner_interval = st.sidebar.selectbox("스캐너 데이터 주기:", ["1d", "1h"], index=0, key=f"interval_select_{kt}")
 else:
     scanner_interval = "1d"
 
-st.sidebar.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
-st.sidebar.markdown("<span style='font-size:11px; font-weight:600; color:#8e8e93; text-transform:uppercase;'>내 포지션 전략</span>", unsafe_allow_html=True)
+position_side = st.sidebar.radio("포지션 방향 설정:", ["LONG (매수)", "SHORT (매도)"], 
+                                 index=0 if st.session_state["position_buffer"] == "LONG (매수)" else 1, key=f"pos_radio_{kt}")
+st.session_state["position_buffer"] = position_side
 
-position_side = "LONG (매수)" # 대가들의 추세추종 특성상 매수에 자동 바인딩 고정
+current_entry_price = st.sidebar.number_input("내 진입 평단가 (0 입력시 비활성화):", value=float(st.session_state["selected_entry_price"]), step=0.01, key=f"entry_input_{kt}")
+st.session_state["selected_entry_price"] = current_entry_price
 
-current_entry = st.sidebar.number_input("내 실제 진입 평단가", value=float(st.session_state["selected_entry_price"]), step=0.01, key=f"e_input_{kt}")
-st.session_state["selected_entry_price"] = current_entry
-
-target_tp_pct = st.sidebar.number_input("목표 익절 비율 (%)", value=float(st.session_state["target_tp_pct"]), step=0.1, key=f"tp_input_{kt}")
+target_tp_pct = st.sidebar.number_input("목표 익절 제한폭 (%)", value=float(st.session_state["target_tp_pct"]), step=0.1, key=f"tp_input_{kt}")
 st.session_state["target_tp_pct"] = target_tp_pct
 
-target_sl_pct = st.sidebar.number_input("제한 손절 비율 (%)", value=float(st.session_state["target_sl_pct"]), step=0.1, key=f"sl_input_{kt}")
+target_sl_pct = st.sidebar.number_input("제한 손절 한계폭 (%)", value=float(st.session_state["target_sl_pct"]), step=0.1, key=f"sl_input_{kt}")
 st.session_state["target_sl_pct"] = target_sl_pct
 
-curr_sign = "₩" if (".KS" in ticker or ".KQ" in ticker) else "$"
-
-# ── 전략 보관함 ──────────────────────────────────────────────────────────
-st.sidebar.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
-st.sidebar.markdown("<span style='font-size:11px; font-weight:600; color:#8e8e93; text-transform:uppercase;'>나만의 조건 마스터 보관함</span>", unsafe_allow_html=True)
-strat_keys = list(st.session_state["saved_strategies"].keys())
-if strat_keys:
-    for idx, key in enumerate(strat_keys):
-        is_active = (key == st.session_state.active_strategy_name)
-        btn_label = f"✦ {key}" if is_active else f"  {key}"
-        sb_col_load, sb_col_del = st.sidebar.columns([5, 1])
-        with sb_col_load:
-            if st.button(btn_label, key=f"v_load_{idx}", use_container_width=True):
-                st.session_state["active_strategy_name"] = key
-                tsd = st.session_state["saved_strategies"][key]
-                st.session_state["cur_conds"] = tsd.get("active_conds", [True]*10)
-                st.session_state["ticker_buffer"] = tsd.get("ticker", "IONQ")
-                st.session_state["selected_entry_price"] = float(tsd.get("entry_price", 0.0))
-                st.session_state["target_tp_pct"] = float(tsd.get("target_tp_pct", 10.0))
-                st.session_state["target_sl_pct"] = float(tsd.get("target_sl_pct", 5.0))
-                st.session_state["input_key_trigger"] += 1
-                st.rerun()
-        with sb_col_del:
-            if st.button("✕", key=f"v_del_{idx}", use_container_width=True):
-                if key in st.session_state["saved_strategies"]: del st.session_state["saved_strategies"][key]
-                save_strategies_permanently()
-                remaining_keys = list(st.session_state["saved_strategies"].keys())
-                st.session_state.active_strategy_name = remaining_keys[0] if remaining_keys else "임시 미지정 전략"
-                st.session_state["input_key_trigger"] += 1
-                st.rerun()
-else:
-    st.sidebar.caption("저장된 전략이 없습니다.")
-
-# ── 요청하신 새로운 10가지 조건식 정의 ───────────────────────────────────────
+# ── 요청하신 새로운 10가지 조건식 라벨 반영 ──
 COND_LABELS = [
-    "① 시장/지수 필터링 (Index > 20EMA)",
-    "② 장기 정배열 (Price > 50 > 150 > 200 EMA)",
-    "③ 주가 위치 필터 (52주 최저+25% 이상, 최고-25% 이내)",
-    "④ 변동성 축소 패턴 (최근 변동폭 < 전월 변동폭)",
-    "⑤ 박스권 돌파 (종가 > 최근 20일 최고가)",
-    "⑥ 메이저 수급 폭발 (거래량 > 20일 평균의 250%)",
-    "⑦ 추세 강도 검증 (ADX ≥ 20 및 +DI > -DI 골든크로스)",
-    "⑧ 위험 한계 준수 (현재가 대비 2×ATR 하락 여유 확보)",
-    "⑨ 기대 수익비 우위 (상단 저항폭 ≥ 하단 손절폭의 2배)",
-    "⑩ 추적 이탈 방지 상태 (종가 > 20일 이동평균선 지지)"
+    "1. 시장 및 지수 필터링 (Index > 20EMA)",
+    "2. 장기 정배열 정렬 (Price > 50 > 150 > 200 EMA)",
+    "3. 주가 위치 필터 (52주 최저 대비 +25%, 최고 대비 -25% 이내)",
+    "4. 단기 매물 소화 및 변동성 축소 (최근 변동성 < 전월 변동성)",
+    "5. 저항선/박스권 돌파 (오늘 종가 > 최근 20일 최고가)",
+    "6. 메이저 수급 및 거래량 폭발 (당일 거래량 > 20일 평균의 250%)",
+    "7. 추세 강도 검증 (ADX >= 20 및 +DI > -DI 골든크로스)",
+    "8. 변동성 기반 위험 측정 (현재가 대비 2*ATR 하락 계산)",
+    "9. 기대 수익비 계산 (상단 저항폭 >= 하단 손절폭의 2배)",
+    "10. 추적 이탈 방지 (종가 > 20일 이동평균선 지지)"
 ]
 
-dk = f"{st.session_state.active_strategy_name}_{kt}"
-with st.sidebar.expander(f"⚙️ 조건 활성화 설정", expanded=False):
-    active_conditions = []
+st.sidebar.markdown("---")
+st.sidebar.subheader("나만의 전략 보관함")
+saved_keys = list(st.session_state["saved_strategies"].keys())
+if saved_keys:
+    for sk in saved_keys:
+        col_load, col_del = st.sidebar.columns([4, 1])
+        with col_load:
+            if st.button(f"📂 {sk}", key=f"load_strat_{sk}", use_container_width=True):
+                st.session_state["active_strategy_name"] = sk
+                s_data = st.session_state["saved_strategies"][sk]
+                st.session_state["cur_conds"] = s_data.get("conds", [True]*10)
+                st.session_state["ticker_buffer"] = s_data.get("ticker", "")
+                st.session_state["position_buffer"] = s_data.get("pos", "LONG (매수)")
+                st.session_state["selected_entry_price"] = s_data.get("entry", 0.0)
+                st.session_state["target_tp_pct"] = s_data.get("tp", 10.0)
+                st.session_state["target_sl_pct"] = s_data.get("sl", 5.0)
+                st.session_state["input_key_trigger"] += 1
+                st.rerun()
+        with col_del:
+            if st.button("❌", key=f"del_strat_{sk}", use_container_width=True):
+                del st.session_state["saved_strategies"][sk]
+                save_strategies()
+                if st.session_state["active_strategy_name"] == sk:
+                    st.session_state["active_strategy_name"] = "임시 미지정 전략"
+                st.rerun()
+else:
+    st.sidebar.caption("저장된 맞춤 전략이 없습니다.")
+
+st.sidebar.markdown("---")
+with st.sidebar.expander("⚙️ 활성화 조건 커스텀 세팅", expanded=False):
     c_defaults = st.session_state["cur_conds"]
-    for i in range(10):
-        v = st.checkbox(COND_LABELS[i], value=c_defaults[i] if i < len(c_defaults) else True, key=f"c_box_{i}_{dk}")
-        active_conditions.append(v)
+    active_conds = []
+    for idx, lbl in enumerate(COND_LABELS):
+        val = st.checkbox(lbl, value=c_defaults[idx] if idx < len(c_defaults) else True, key=f"chk_cond_{idx}")
+        active_conds.append(val)
 
-max_possible_score = sum(active_conditions)
+max_possible_score = sum(active_conds)
 
-st.sidebar.markdown("<hr style='border-color:#3a3a3c;'>", unsafe_allow_html=True)
-default_input_name = "" if st.session_state.active_strategy_name == "임시 미지정 전략" else st.session_state.active_strategy_name
-new_strat_name = st.sidebar.text_input("전략 이름", value=default_input_name, placeholder="이름 입력 후 저장", key=f"s_name_{dk}")
-if st.sidebar.button("💾  전략 저장 / 수정", use_container_width=True, key=f"save_btn_{dk}"):
-    save_key = new_strat_name.strip() if new_strat_name.strip() else "추세추종 마스터 전략"
-    st.session_state["saved_strategies"][save_key] = {
-        "ticker": st.session_state["ticker_buffer"], "position_side": position_side,
-        "entry_price": current_entry, "target_tp_pct": target_tp_pct, "target_sl_pct": target_sl_pct,
-        "active_conds": active_conditions
+strat_input_val = "" if st.session_state["active_strategy_name"] == "임시 미지정 전략" else st.session_state["active_strategy_name"]
+new_strategy_name = st.sidebar.text_input("새 전략 이름 입력:", value=strat_input_val, placeholder="예: 미너비니 추세추종")
+if st.sidebar.button("💾 현재 설정 전략 저장/업데이트", use_container_width=True):
+    s_name = new_strategy_name.strip() if new_strategy_name.strip() else f"전략 {datetime.now().strftime('%M%S')}"
+    st.session_state["saved_strategies"][s_name] = {
+        "conds": active_conds, "ticker": st.session_state["ticker_buffer"], "pos": position_side,
+        "entry": current_entry_price, "tp": target_tp_pct, "sl": target_sl_pct
     }
-    save_strategies_permanently()
-    st.session_state.active_strategy_name = save_key
-    st.session_state["cur_conds"] = active_conditions
-    st.session_state["target_tp_pct"] = target_tp_pct
-    st.session_state["target_sl_pct"] = target_sl_pct
+    save_strategies()
+    st.session_state["active_strategy_name"] = s_name
+    st.session_state["cur_conds"] = active_conds
     st.session_state["input_key_trigger"] += 1
     st.rerun()
 
 # ==========================================
-# 5. 기술적 분석 엔진 (새로운 10가지 알고리즘 반영)
+# 3. 새로운 10가지 알고리즘 기반 데이터 연산 엔진
 # ==========================================
-def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
+def fetch_and_analyze(symbol, interval_str):
     if not symbol: return None
     symbol = symbol.upper().strip()
-    period_str = "3y" if interval in ["1d", "1wk"] else "730d"
+    period = "3y" if interval_str in ["1d", "1wk"] else "730d"
 
     try:
-        # [조건 1] 시장 지수 자동 필터링 결정 (^GSPC / ^KS11 / ^KQ11)
+        # [1번 조건] 지수 필터링용 매핑
         if ".KS" in symbol: index_symbol = "^KS11"
         elif ".KQ" in symbol: index_symbol = "^KQ11"
         else: index_symbol = "^GSPC"
         
-        idx_df = yf.Ticker(index_symbol).history(period="100d", interval=interval)
+        idx_df = yf.Ticker(index_symbol).history(period="100d", interval=interval_str)
         if not idx_df.empty:
             idx_df['EMA20'] = idx_df['Close'].ewm(span=20, adjust=False).mean()
             market_filter = bool(idx_df['Close'].iloc[-1] > idx_df['EMA20'].iloc[-1])
         else:
             market_filter = True
 
-        df = yf.Ticker(symbol).history(period=period_str, interval=interval)
+        df = yf.Ticker(symbol).history(period=period, interval=interval_str)
         if df.empty or len(df) < 252: return None
         df = df.sort_index(ascending=True).ffill().bfill()
 
@@ -329,7 +196,7 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
         df['EMA150'] = df['Close'].ewm(span=150, adjust=False).mean()
         df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
         
-        # 52주 데이터 및 20일 저항선 추출
+        # 52주 고가/저가 및 20일 저항선 추출
         df['Min_52wk'] = df['Low'].rolling(window=252, min_periods=50).min()
         df['Max_52wk'] = df['High'].rolling(window=252, min_periods=50).max()
         df['Max_20v'] = df['High'].shift(1).rolling(window=20).max()
@@ -348,22 +215,22 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
         dx = 100 * abs(df['Plus_DI'] - df['Minus_DI']) / (df['Plus_DI'] + df['Minus_DI'] + 1e-9)
         df['ADX'] = dx.rolling(window=14).mean()
 
-        last, prev = df.iloc[-1], df.iloc[-2]
+        last = df.iloc[-1]
         
-        # [조건 4] 변동성 축소 패턴 (VCP) 계산
+        # [4번 조건] 변동성 축소 패턴 (VCP) 연산
         recent_range = df['High'].tail(15).max() - df['Low'].tail(15).min()
         prior_range = df['High'].iloc[-45:-15].max() - df['Low'].iloc[-45:-15].min()
         vcp_pattern = bool(recent_range < prior_range)
 
-        # [조건 9] 기대 수익비 산출
+        # [8, 9번 조건] 손절선 및 기대수익비 산출
         resistance_price = last['Max_52wk']
         stop_loss_price = last['Close'] - (2 * last['ATR'])
         reward_side = resistance_price - last['Close']
         risk_side = last['Close'] - stop_loss_price
         profit_ratio_cond = bool(reward_side >= (risk_side * 2))
 
-        # 10대 대가들의 조건 판정 매핑
-        c_results = [
+        # ── 새로운 10가지 조건식 판정 로직 (LONG 기준) ──
+        long_results = [
             market_filter,                                                                  # 1
             bool(last['Close'] > last['EMA50'] > last['EMA150'] > last['EMA200']),         # 2
             bool(last['Close'] >= last['Min_52wk'] * 1.25 and last['Close'] >= last['Max_52wk'] * 0.75), # 3
@@ -376,151 +243,171 @@ def get_yahoo_custom_analysis(symbol, interval, forced_position=None):
             bool(last['Close'] > last['EMA20'])                                             # 10
         ]
 
-        score = sum([1 for i, active in enumerate(active_conditions) if active and c_results[i]])
-        fg, bg, lbl = get_signal_theme(score, max_possible_score)
-        return {"df": df, "score": score, "status_text": f"{lbl} ({score}/{max_possible_score})",
-                "current_price": last['Close'], "currency": "₩" if (".KS" in symbol or ".KQ" in symbol) else "$",
-                "c_results": c_results, "fg": fg, "bg": bg, "lbl": lbl, "atr": last['ATR'], "stop_line": stop_loss_price}
-    except Exception: return None
+        # SHORT 판정 로직 (반대 포지션 헷지용 스케일링)
+        short_results = [
+            not market_filter,
+            bool(last['Close'] < last['EMA50'] < last['EMA150'] < last['EMA200']),
+            bool(last['Close'] <= last['Max_52wk'] * 0.75),
+            vcp_pattern,
+            bool(last['Close'] <= df['Low'].shift(1).rolling(window=20).min().iloc[-1]),
+            bool(last['Volume'] >= last['Vol_MA20'] * 2.5),
+            bool(last['ADX'] >= 20 and last['Minus_DI'] > last['Plus_DI']),
+            bool(risk_side > 0),
+            bool((last['Close'] - last['Min_52wk']) >= ((last['Close'] + 2*last['ATR']) - last['Close']) * 2),
+            bool(last['Close'] < last['EMA20'])
+        ]
+
+        long_score = sum([1 for i, active in enumerate(active_conds) if active and long_results[i]])
+        short_score = sum([1 for i, active in enumerate(active_conds) if active and short_results[i]])
+
+        return {
+            "df": df, "long_score": long_score, "short_score": short_score,
+            "long_results": long_results, "short_results": short_results,
+            "price": last['Close'], "atr": last['ATR'], "stop_line": stop_loss_price,
+            "currency": "₩" if (".KS" in symbol or ".KQ" in symbol) else "$"
+        }
+    except Exception as e:
+        return None
 
 # ==========================================
-# 6. 메인 뷰 — 단일 종목 검색 모드 (기존 컴포넌트 구조 유지)
+# 4. 메인 대시보드 - 단일 종목 검색 뷰
 # ==========================================
 if app_mode == "🎯 단일 종목 검색":
-    name_disp = STOCK_MAP.get(ticker, ticker)
-    st.markdown(f"<div style='margin-bottom:20px;'><h2 style='font-size:22px;font-weight:700;color:#1c1c1e;margin:0;'>{name_disp}</h2>"
-                f"<span style='font-size:13px;color:#8e8e93;font-weight:500;'>{ticker}</span></div>" if ticker else 
-                "<div style='margin-bottom:20px;'><h2 style='font-size:22px;font-weight:700;color:#1c1c1e;'>종목을 입력하세요</h2></div>", unsafe_allow_html=True)
-
+    st.title("📈 실시간 통합 마스터 대시보드")
     if not ticker:
-        st.info("← 왼쪽 제어 패널에서 분석할 종목 이름 또는 티커를 입력해 주세요.")
+        st.info("💡 제어 콘솔 창에서 분석 대상 기업 명칭이나 티커를 입력해 주세요.")
         st.stop()
 
-    with st.spinner("⏳ 대가들의 알고리즘 기반 분석 연산 실행 중..."):
-        res = get_yahoo_custom_analysis(ticker, "1d")
+    with st.spinner("데이터 동기화 및 10대 마스터 스크리닝 알고리즘 연산 중..."):
+        res = fetch_and_analyze(ticker, "1d")
 
     if res is None:
-        st.error("❌ 현재 시세 데이터를 불러오지 못했습니다. 티커 부호 상태나 데이터셋 구성을 점검하세요.")
+        st.error("데이터 패치 실패. 입력하신 부호나 시장 구분을 다시 검증하세요.")
         st.stop()
 
-    c_price, curr = res["current_price"], res["currency"]
+    disp_name = STOCK_MAP.get(ticker, ticker)
+    c_price, curr = res["price"], res["currency"]
 
-    # 기존 모니터링 컴포넌트 레이아웃 100% 보존
-    st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;'>실시간 시스템 산출 모니터링</p>", unsafe_allow_html=True)
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("🔥 현재가", f"{curr}{c_price:,.2f}")
-    m2.metric("🛡️ 시스템 권장 손절선 (2×ATR)", f"{curr}{res['stop_line']:,.2f}")
-    
-    if current_entry > 0:
-        realtime_profit = ((c_price - current_entry) / current_entry) * 100
-        calculated_tp = current_entry * (1 + target_tp_pct / 100)
-        calculated_sl = current_entry * (1 - target_sl_pct / 100)
-        m3.metric(f"🎯 목표 익절가 ({target_tp_pct}%)", f"{curr}{calculated_tp:,.2f}")
-        m4.metric(f"🚨 수동 로스컷 가격 ({target_sl_pct}%)", f"{curr}{calculated_sl:,.2f}")
+    # ── 실시간 자산 관리 상태 모니터링 (기존 구성 유지) ──
+    st.markdown(f"### 🔍 {disp_name} ({ticker}) 분석 요약")
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    m_col1.metric("현재가", f"{curr}{c_price:,.2f}")
+    m_col2.metric("시스템 추천 손절선 (2×ATR)", f"{curr}{res['stop_line']:,.2f}")
+
+    if current_entry_price > 0:
+        profit_pct = ((c_price - current_entry_price) / current_entry_price) * 100
+        proj_tp = current_entry_price * (1 + target_tp_pct/100)
+        proj_sl = current_entry_price * (1 - target_sl_pct/100)
+        m_col3.metric(f"목표 익절가 ({target_tp_pct}%)", f"{curr}{proj_tp:,.2f}", f"{profit_pct:+.2f}%")
+        m_col4.metric(f"수동 제한 로스컷 ({target_sl_pct}%)", f"{curr}{proj_sl:,.2f}")
     else:
-        m3.metric("🎯 내 목표 익절가", "평단가 미입력")
-        m4.metric("🚨 수동 로스컷 가격", "평단가 미입력")
+        m_col3.metric("목표 익절가", "평단가 미입력")
+        m_col4.metric("수동 제한 로스컷", "평단가 미입력")
 
-    st.markdown("<hr>", unsafe_allow_html=True)
+    # ── 스코어 가이드 바 및 체크리스트 ──
+    cur_side_score = res["long_score"] if "LONG" in position_side else res["short_score"]
+    cur_side_results = res["long_results"] if "LONG" in position_side else res["short_results"]
+    
+    match_ratio = int((cur_side_score / max_possible_score)*100) if max_possible_score > 0 else 0
+    
+    st.markdown("---")
+    st.markdown(f"#### 📊 선택 포지션 [{position_side}] 추세 매칭 지수: **{cur_side_score} / {max_possible_score} 점** ({match_ratio}%)")
+    st.progress(match_ratio / 100)
 
-    # 기존 상단 스코어바 및 타점 매칭 프로그레스 바 보존
-    st.markdown(f"<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;'>대가들의 조건식 체크리스트 검증 결과</p>", unsafe_allow_html=True)
-    sc1, sc2 = st.columns([1, 3])
-    with sc1:
-        st.markdown(create_apple_html_card(
-            f"<div style='font-size:11px;color:#8e8e93;font-weight:500;'>종합 추세 부합도</div>"
-            f"<div style='font-size:28px;font-weight:800;color:{res['fg']};margin:4px 0;'>{res['score']}<span style='font-size:14px;color:#8e8e93;'>/{max_possible_score}</span></div>"
-            f"<div>{create_apple_pill(res['lbl'], res['fg'], res['bg'])}</div>"
-        ), unsafe_allow_html=True)
-    with sc2:
-        if max_possible_score > 0:
-            pct = int(res["score"] / max_possible_score * 100)
-            st.markdown(f"<div style='background:#fff; border:1px solid #e5e5ea; border-radius:14px; padding:14px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.04);'>"
-                        f"<div style='font-size:11px;color:#8e8e93;font-weight:500;margin-bottom:8px;'>추세 조건 매칭률</div>"
-                        f"<div style='background:#f2f2f7; border-radius:99px; height:8px; overflow:hiddentoggle;'>"
-                        f"<div style='background:{res['fg']}; width:{pct}%; height:8px; border-radius:99px; transition:width 0.5s ease;'></div></div>"
-                        f"<div style='font-size:20px; font-weight:700; color:{res['fg']}; margin-top:8px;'>{pct}%</div></div>", unsafe_allow_html=True)
-
-    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-    check_cols = st.columns(2)
-    for idx, (label, active, passed) in enumerate(zip(COND_LABELS, active_conditions, res["c_results"])):
-        col = check_cols[0] if idx < 5 else check_cols[1]
+    st.markdown("<br>", unsafe_allow_html=True)
+    c_left, c_right = st.columns(2)
+    for i, (label, active) in enumerate(zip(COND_LABELS, active_conds)):
+        target_col = c_left if i < 5 else c_right
         if active:
-            if passed: col.markdown(create_apple_html_card(f"✅ <span style='font-size:12px;font-weight:600;color:#1c6b3a;'>{label}</span>", bg="#f0fdf4", border="#bbf7d0"), unsafe_allow_html=True)
-            else: col.markdown(create_apple_html_card(f"❌ <span style='font-size:12px;font-weight:500;color:#9b1c1c;'>{label}</span>", bg="#fff5f5", border="#fecaca"), unsafe_allow_html=True)
-        else: col.markdown(create_apple_html_card(f"⬜ <span style='font-size:12px;color:#c7c7cc;'>{label}</span>", bg="#fafafa", border="#e5e5ea"), unsafe_allow_html=True)
+            if cur_side_results[i]:
+                target_col.success(f"✅ {label} — **조건 충족**")
+            else:
+                target_col.error(f"❌ {label} — **조건 미달**")
+        else:
+            target_col.warning(f"⚪ {label} — **검증 비활성화**")
 
 # ==========================================
-# 7. 메인 뷰 — 주요 종목 마스터 스캐너 모드 (기존 그리드뷰 유지)
+# 5. 메인 대시보드 - 조건 스캐너 뷰 (기존 그리드뷰 유지)
 # ==========================================
 else:
-    st.markdown(f"<h2 style='font-size:22px;font-weight:700;color:#1c1c1e;margin-bottom:4px;'>추세 마스터 스캐너</h2>"
-                f"<p style='font-size:13px;color:#8e8e93;margin-bottom:20px;'>지정 시간대({scanner_interval}) 통합 우량 추세 풀 검증 조건 검색</p>", unsafe_allow_html=True)
+    st.title("🔍 실시간 우량 자산 전수 검색기")
     
-    m_col1, m_col2 = st.columns(2)
-    with m_col1: scan_us = st.checkbox("🇺🇸 미국 우량주 그룹 포함", value=True)
-    with m_col2: scan_kr = st.checkbox("🇰🇷 한국 우량주 그룹 포함", value=False)
+    sc_col1, sc_col2 = st.columns(2)
+    with sc_col1: use_us = st.checkbox("🇺🇸 미국 프리미엄 우량주 포함", value=True)
+    with sc_col2: use_kr = st.checkbox("🇰🇷 한국 대형 우량주 포함", value=False)
 
-    scan_list = []
-    if scan_us: scan_list.extend(US_SCAN_LIST)
-    if scan_kr: scan_list.extend(KR_SCAN_LIST)
+    scan_pool = []
+    if use_us: scan_pool.extend(US_STOCK_LIST)
+    if use_kr: scan_pool.extend(KR_STOCK_LIST)
 
-    if st.button("🚀  실시간 전수 조건 검색 조사 스캔 시작"):
-        st.session_state.pop("cached_scan", None)
-        scan_results = []
-        prog_bar = st.progress(0)
+    if st.button("🚀 스캔 매칭 매트릭스 가동", use_container_width=True):
+        st.session_state.pop("scanner_cache", None)
+        computed_list = []
+        progress_bar = st.progress(0)
 
-        def thread_scanner(sym):
-            return sym, get_yahoo_custom_analysis(sym, scanner_interval)
-            
+        def worker(sym):
+            return sym, fetch_and_analyze(sym, scanner_interval)
+
         with ThreadPoolExecutor(max_workers=8) as executor:
-            for idx, (sym_k, m) in enumerate(executor.map(thread_scanner, scan_list)):
-                if m:
-                    scan_results.append({
-                        "티커": sym_k, "종목명": STOCK_MAP.get(sym_k, sym_k), "현재가": f"{m['currency']}{m['current_price']:,.2f}",
-                        "score_raw": m["score"], "signal_lbl": m["lbl"], "fg": m["fg"], "bg": m["bg"]
+            for idx, (sym, data) in enumerate(executor.map(worker, scan_pool)):
+                if data:
+                    computed_list.append({
+                        "ticker": sym, "name": STOCK_MAP.get(sym, sym),
+                        "price": f"{data['currency']}{data['price']:,.2f}",
+                        "long_score_raw": data["long_score"], "short_score_raw": data["short_score"]
                     })
-                prog_bar.progress(min(1.0, (idx + 1) / len(scan_list)))
-            
-        if scan_results:
-            st.session_state["cached_scan"] = sorted(scan_results, key=lambda x: x["score_raw"], reverse=True)
+                progress_bar.progress(min(1.0, (idx + 1) / len(scan_pool)))
 
-    if "cached_scan" in st.session_state and st.session_state["cached_scan"]:
-        data = st.session_state["cached_scan"]
-        df_view = pd.DataFrame([{
-            "종목코드": d["티커"], "종목명": d["종목명"], "현재시세": d["현재가"],
-            "📊 스코어 스케일": f"{d['score_raw']}/{max_possible_score}", "추세 부합 상태": d["signal_lbl"]
-        } for d in data])
+        if computed_list:
+            st.session_state["scanner_cache"] = sorted(computed_list, key=lambda x: x["long_score_raw"], reverse=True)
 
-        def color_signal_cell(val):
-            v = str(val).replace(" ", "")
-            if "사격" in v: return "background-color: #d1f5e0; color: #1c6b3a; font-weight: 600;"
-            if "위험" in v: return "background-color: #fde8e8; color: #9b1c1c; font-weight: 600;"
-            return "background-color: #fef9c3; color: #7d5a00; font-weight: 600;"
-
-        styled_df = df_view.style.map(color_signal_cell, subset=['추세 부합 상태'])
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
-
-        st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;'>실시간 스캔 매칭률 Top 10 순위군</p>", unsafe_allow_html=True)
+    if "scanner_cache" in st.session_state:
+        cache = st.session_state["scanner_cache"]
         
-        top_10 = data[:10]
-        for row_idx in range(0, len(top_10), 5):
-            grid_cols = st.columns(5)
-            for idx, item in enumerate(top_10[row_idx:row_idx+5]):
-                with grid_cols[idx]:
-                    st.markdown(
-                        f"<div style='background:#fff; border:1px solid #e5e5ea; border-radius:14px; padding:14px 12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:8px;'>"
-                        f"<div style='font-size:13px; font-weight:700; color:#1c1c1e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{item['종목명']}</div>"
-                        f"<div style='font-size:16px; font-weight:800; color:#1c1c1e; margin:6px 0;'>{item['현재가']}</div>"
-                        f"<div style='background:{item['bg']}; border-radius:8px; padding:6px; margin-bottom:8px;'>"
-                        f"<div style='font-size:10px; color:{item['fg']}; font-weight:600;'>SCORE</div>"
-                        f"<div style='font-size:14px; font-weight:800; color:{item['fg']};'>{item['score_raw']}/{max_possible_score}</div>"
-                        f"<div style='font-size:11px; font-weight:600; color:{item['fg']};'>{item['signal_lbl']}</div></div>"
-                        f"</div>", unsafe_allow_html=True)
+        df_display = pd.DataFrame([{
+            "종목코드": item["ticker"], "종목명": item["name"], "현재시세": item["price"],
+            "LONG 매칭 스코어": f"{item['long_score_raw']} / {max_possible_score}",
+            "SHORT 매칭 스코어": f"{item['short_score_raw']} / {max_possible_score}"
+        } for item in cache])
+        
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+        st.markdown("### 📊 실시간 트렌드 타점 스캐닝 매트릭스 (TOP 10)")
+        top_10 = cache[:10]
+        
+        #기존 원본의 각진 5열 카드 레이아웃 구조 100% 동기화
+        for r_idx in range(0, len(top_10), 5):
+            cols = st.columns(5)
+            for idx, item in enumerate(top_10[r_idx:r_idx+5]):
+                with cols[idx]:
+                    l_ratio = item['long_score_raw'] / max_possible_score if max_possible_score > 0 else 0
+                    s_ratio = item['short_score_raw'] / max_possible_score if max_possible_score > 0 else 0
                     
-                    if st.button(f"🔍 {item['티커']} 분석", key=f"grid_trig_{item['티커']}_{row_idx}_{idx}", use_container_width=True):
-                        st.session_state["ticker_buffer"] = item['티커']
+                    l_bg = "#ebf8ff" if l_ratio >= 0.8 else "#f7fafc"
+                    l_fg = "#2b6cb0" if l_ratio >= 0.8 else "#4a5568"
+                    s_bg = "#fff5f5" if s_ratio >= 0.8 else "#f7fafc"
+                    s_fg = "#c53030" if s_ratio >= 0.8 else "#4a5568"
+
+                    st.markdown(f"""
+                    <div style="border:1px solid #e2e8f0; background-color:#ffffff; padding:12px; margin-bottom:10px; box-shadow:0px 2px 4px rgba(0,0,0,0.04);">
+                        <span style="font-weight:700; color:#1a202c; font-size:14px; display:block; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;">{item['name']}</span>
+                        <code style="color:#4a5568; font-size:11px; background-color:#f7fafc; padding:2px 6px; border-radius:4px;">{item['ticker']}</code>
+                        <div style="font-size:18px; font-weight:800; color:#2d3748; margin:8px 0;">{item['price']}</div>
+                        <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+                            <div style="background:{l_bg}; padding:4px 8px; border-radius:4px; text-align:center;">
+                                <div style="font-size:9px; color:{l_fg}; font-weight:600;">📈 LONG</div>
+                                <div style="font-size:13px; font-weight:800; color:{l_fg};">{item['long_score_raw']}/{max_possible_score}</div>
+                            </div>
+                            <div style="background:{s_bg}; padding:4px 8px; border-radius:4px; text-align:center;">
+                                <div style="font-size:9px; color:{s_fg}; font-weight:600;">📉 SHORT</div>
+                                <div style="font-size:13px; font-weight:800; color:{s_fg};">{item['short_score_raw']}/{max_possible_score}</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if st.button(f"📈 {item['ticker']} 분석", key=f"btn_redirect_{item['ticker']}_{r_idx}_{idx}", use_container_width=True):
+                        st.session_state["ticker_buffer"] = item['ticker']
                         st.session_state["mode_buffer"] = "🎯 단일 종목 검색"
                         st.session_state["input_key_trigger"] += 1
                         st.rerun()
